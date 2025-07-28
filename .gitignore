@@ -1,0 +1,48 @@
+# --- Sensitive Information & Secrets ---
+# CRITICAL: Ignore the .env file containing all your secret keys
+.env
+.env.*
+
+# CRITICAL: Ignore Google Cloud service account key files and other credentials
+*key.json
+*credentials.json
+*secret*.json
+
+# --- Python ---
+# Virtual Environments
+venv/
+web_ui/venv_webui/
+
+# Byte-compiled / optimized / C extensions
+__pycache__/
+*.pyc
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# --- Node.js (for the frontend) ---
+web_ui/frontend/node_modules/
+web_ui/frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Local Databases & State Files ---
+# IMPORTANT: Ignore all SQLite database files
+*.db
+*.db-journal
+
+# --- IDE / Editor Files ---
+# Ignore all VS Code settings EXCEPT the tasks file
+.vscode/*
+!.vscode/tasks.json
+
+# --- OS-specific files ---
+.DS_Store
+Thumbs.db
+
+# --- Local Storage ---
+# Ignore the folder where original documents are saved
+document_storage/

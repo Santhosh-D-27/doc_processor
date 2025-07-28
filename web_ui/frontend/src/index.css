@@ -1,0 +1,11 @@
+/* In web_ui/frontend/src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #111827; /* A dark blue-gray */
+  background-image: radial-gradient(circle at 1px 1px, #374151 1px, transparent 0);
+  background-size: 20px 20px;
+  color: #e5e7eb;
+}

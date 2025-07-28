@@ -1,0 +1,141 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start RabbitMQ",
+      "type": "shell",
+      "command": "docker start doc-message-bus",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Ingestor API",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        ".\\venv\\Scripts\\Activate.ps1; dotenv run -- uvicorn ingestor.main:app --host 0.0.0.0 --port 8001 --reload"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Start RabbitMQ"],
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Email Ingestor",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        ".\\venv\\Scripts\\Activate.ps1; dotenv run -- python ingestor\\email_monitor.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Start RabbitMQ"],
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start File Ingestor",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        ".\\venv\\Scripts\\Activate.ps1; python ingestor\\file_monitor.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Start RabbitMQ"],
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Extractor",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        ".\\venv\\Scripts\\Activate.ps1; dotenv run -- python extractor\\main.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Start RabbitMQ"],
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Classifier",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        ".\\venv\\Scripts\\Activate.ps1; dotenv run -- python classifier\\main.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Start RabbitMQ"],
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Router",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        ".\\venv\\Scripts\\Activate.ps1; dotenv run -- python router\\main.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Start RabbitMQ"],
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start WebUI Backend",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        ".\\venv\\Scripts\\Activate.ps1; dotenv run -- uvicorn web_ui.main:app --host 0.0.0.0 --port 8000 --reload"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Start RabbitMQ"],
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Frontend",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}\\web_ui\\frontend"
+      },
+      "presentation": { "panel": "new" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start All Services",
+      "dependsOn": [
+        "Start Ingestor API",
+        "Start Email Ingestor",
+        "Start File Ingestor",
+        "Start Extractor",
+        "Start Classifier",
+        "Start Router",
+        "Start WebUI Backend",
+        "Start Frontend"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
