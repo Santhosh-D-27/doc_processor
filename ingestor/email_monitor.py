@@ -8,7 +8,7 @@ import base64
 import sqlite3
 import uuid
 import google.generativeai as genai
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -70,7 +70,7 @@ def publish_status_update(doc_id: str, status: str, details: dict = None):
     if details is None: details = {}
     status_message = {
         "document_id": doc_id, "status": status,
-        "timestamp": datetime.utcnow().isoformat(), "details": details
+        "timestamp": datetime.now(UTC).isoformat(), "details": details
     }
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))

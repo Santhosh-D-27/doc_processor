@@ -1,0 +1,17 @@
+/* In web_ui/frontend/src/components/ProgressBar.css */
+
+@keyframes pulse-animation {
+    0% {
+      box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(20, 184, 166, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    }
+  }
+  
+  .node.processing {
+    animation: pulse-animation 2s infinite;
+  }

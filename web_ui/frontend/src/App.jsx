@@ -59,17 +59,34 @@ function App() {
     ws.onerror = () => setError("WebSocket connection error.");
 
     ws.onmessage = (event) => {
-      const updatedDoc = JSON.parse(event.data);
+      const newStatusEvent = JSON.parse(event.data);
+      
+      let isNewDocument = false;
       setDocuments(prevDocs => {
-        const docIndex = prevDocs.findIndex(doc => doc.document_id === updatedDoc.document_id);
+        const docIndex = prevDocs.findIndex(doc => doc.document_id === newStatusEvent.document_id);
         let newDocs;
         if (docIndex > -1) {
           newDocs = [...prevDocs];
-          newDocs[docIndex] = updatedDoc;
+          newDocs[docIndex] = { ...newDocs[docIndex], ...newStatusEvent };
         } else {
-          newDocs = [updatedDoc, ...prevDocs];
+          isNewDocument = true;
+          newDocs = [newStatusEvent, ...prevDocs];
         }
         return newDocs.sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
+      });
+
+      setExpandedRow(prevExpanded => {
+        if (isNewDocument) {
+          // A new document has arrived, automatically expand it.
+          // We start with a minimal history and let the next updates fill it in.
+          return { id: newStatusEvent.document_id, history: [newStatusEvent] };
+        }
+        if (prevExpanded && prevExpanded.id === newStatusEvent.document_id) {
+          // Update is for the currently expanded row, so update its history
+          const updatedHistory = [...prevExpanded.history, newStatusEvent];
+          return { ...prevExpanded, history: updatedHistory };
+        }
+        return prevExpanded;
       });
     };
 
@@ -175,7 +192,9 @@ function App() {
                             <div className="ml-4 flex flex-col gap-2">
                               <button
                                 onClick={(e) => handleManualAction('re-extract', doc.document_id, e)}
-                                className="px-3 py-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded-md transition-colors"
+                                className="px-3 py-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded-md transition-colors disabled:opacity-50"
+                                title="This feature requires a more advanced file storage setup."
+                                disabled 
                               >
                                 Re-extract
                               </button>

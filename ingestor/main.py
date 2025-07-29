@@ -6,7 +6,7 @@ import json
 import base64
 import os
 from fastapi import FastAPI, UploadFile, File, Form
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -36,7 +36,7 @@ def publish_status_update(doc_id: str, status: str, details: dict = None):
     status_message = {
         "document_id": doc_id,
         "status": status,
-        "timestamp": datetime.utcnow().isoformat() + "Z", # Add "Z" for UTC,
+        "timestamp": datetime.now(UTC).isoformat(),
         "details": details
     }
     try:

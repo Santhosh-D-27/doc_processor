@@ -245,41 +245,53 @@ def re_classify_document(document_id: str):
 def re_extract_document(document_id: str):
     print(f"[API] Received request to re-extract document: {document_id}")
     try:
+        # 1. Get the document's full history
         history_events = get_document_history(document_id)
+        
+        # 2. Find the original 'Ingested' event which contains the file content
         ingested_event = next((event for event in history_events if event['status'] == 'Ingested'), None)
 
         if not ingested_event:
             raise HTTPException(status_code=404, detail="Original ingestion record not found.")
 
-        details = json.loads(ingested_event['details'])
-        storage_path = details.get('storage_path')
+        # 3. Get the encoded file content directly from the database record
+        file_content_b64 = ingested_event.get('file_content_encoded')
+        if not file_content_b64:
+            raise HTTPException(status_code=404, detail="Encoded file content not found in ingestion history.")
 
-        if not storage_path or not os.path.exists(storage_path):
-            raise HTTPException(status_code=404, detail=f"Stored file not found at path: {storage_path}")
+        # 4. Get the original filename from the 'details' JSON
+        ingested_details = json.loads(ingested_event.get('details', '{}'))
+        original_filename = ingested_details.get('filename')
+        if not original_filename:
+             raise HTTPException(status_code=404, detail="Original filename not found in ingestion history.")
 
-        with open(storage_path, 'rb') as f:
-            file_content = f.read()
-        
-        original_filename = details.get('filename')
-        
+        # 5. Prepare the message for the extraction queue
         message_to_extractor = {
             'document_id': document_id,
             'filename': original_filename,
-            'storage_path': storage_path,
-            'content_type': 'application/octet-stream',
-            'file_content': base64.b64encode(file_content).decode('utf-8'),
+            # No longer need storage_path, we use the content directly
+            'file_content': file_content_b64, 
             'priority': 'high',
             'source': 'manual_re-extract'
         }
 
+        # 6. Publish the message to RabbitMQ
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
         channel = connection.channel()
         channel.queue_declare(queue='doc_received_queue', durable=True)
-        channel.basic_publish(exchange='', routing_key='doc_received_queue', body=json.dumps(message_to_extractor))
+        channel.basic_publish(
+            exchange='', 
+            routing_key='doc_received_queue', 
+            body=json.dumps(message_to_extractor)
+        )
         connection.close()
         
-        return {"status": "success"}
+        print(f"[API] Successfully queued {document_id} for re-extraction.")
+        return {"status": "success", "detail": f"Document {document_id} sent for re-extraction."}
 
+    except HTTPException as http_exc:
+        # Re-raise HTTP exceptions to be handled by FastAPI
+        raise http_exc
     except Exception as e:
         print(f"[API Error] Failed to re-extract {document_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

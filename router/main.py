@@ -6,7 +6,7 @@ import os
 import requests
 import sys
 import time
-from datetime import datetime # ADD THIS
+from datetime import datetime, UTC # ADD THIS
 
 # --- Google Sheets API Imports ---
 from google.oauth2 import service_account
@@ -41,7 +41,7 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, doc_ty
     status_message = {
         "document_id": doc_id,
         "status": status,
-        "timestamp": datetime.utcnow().isoformat() + "Z", # Add "Z" for UTC, # Use datetime.utcnow() from datetime import datetime
+       "timestamp": datetime.now(UTC).isoformat(), # Add "Z" for UTC, # Use datetime.utcnow() from datetime import datetime
         "details": details,
         "doc_type": doc_type, # Include classified type if available
         "confidence": confidence # Include confidence if available

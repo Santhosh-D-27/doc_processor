@@ -20,13 +20,17 @@ const UploadPanel = () => {
 
     try {
       const response = await axios.post(`${INGESTOR_API_URL}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      setUploadStatus(`Successfully uploaded ${response.data.filename}!`);
-    } catch (error) {
+      setUploadStatus(`Successfully uploaded ${response.data.filename}! (ID: ${response.data.document_id})`);
+    } catch (error) { // The missing brace was here
       console.error('Upload failed:', error);
       setUploadStatus(`Upload failed for ${file.name}. Is the Ingestor agent running?`);
     }
+
+    // Clear the status message after 5 seconds
     setTimeout(() => setUploadStatus(''), 5000);
   }, []);
 
@@ -34,8 +38,11 @@ const UploadPanel = () => {
     onDrop,
     multiple: false,
     accept: {
-      'image/jpeg': [], 'image/png': [],
-      'application/pdf': [], 'text/plain': [],
+      'image/jpeg': [],
+      'image/png': [],
+      'application/pdf': [],
+      'text/plain': [],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     }
   });
 
@@ -46,7 +53,8 @@ const UploadPanel = () => {
         ${isDragActive ? 'border-teal-400 bg-teal-900/50' : 'border-gray-600 hover:border-gray-400'}`}
     >
       <input {...getInputProps()} />
-      {isDragActive ?
+      {
+        isDragActive ?
           <p>Drop the file here ...</p> :
           <p>Drag 'n' drop a document here, or click to select a file</p>
       }

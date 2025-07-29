@@ -9,7 +9,7 @@ import os
 import shutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from datetime import datetime
+from datetime import datetime, UTC
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,7 +29,7 @@ def publish_status_update(doc_id: str, status: str, details: dict = None):
     status_message = {
         "document_id": doc_id,
         "status": status,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "details": details
     }
     try:
