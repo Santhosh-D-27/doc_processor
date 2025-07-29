@@ -9,13 +9,13 @@ import asyncio
 import time
 import os
 import base64
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from typing import List
-from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Optional # Import Optional
 import imaplib
-from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware # This line is critical
+from datetime import datetime, UTC # Import UTC for timezone-aware datetimes
 
 # --- Configuration ---
 RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', '127.0.0.1')
@@ -28,27 +28,56 @@ class Mailbox(BaseModel):
     app_password: str
     folder: str = 'inbox'
 
+class VIPContactCreate(BaseModel):
+    email: str
+    name: Optional[str] = None
+    vip_level: str # HIGH, MEDIUM, LOW
+    department: Optional[str] = None
+    role: Optional[str] = None
+
+class VIPDocumentUpdate(BaseModel):
+    status: str
+    risk_assessment: Optional[str] = None
+
 # --- Database Setup ---
 def setup_database():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    # Main table for current state
+
+    # Enhanced document_status table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS document_status (
-            document_id TEXT PRIMARY KEY, filename TEXT, status TEXT, doc_type TEXT,
-            confidence REAL, last_updated TEXT
+            document_id TEXT PRIMARY KEY,
+            filename TEXT,
+            status TEXT,
+            doc_type TEXT,
+            confidence REAL,
+            last_updated TEXT,
+            is_vip BOOLEAN DEFAULT 0,          -- New: VIP status
+            vip_level TEXT DEFAULT 'NONE',     -- New: VIP level (HIGH, MEDIUM, LOW, NONE)
+            summary TEXT,                      -- New: Document summary
+            priority_content TEXT              -- New: JSON string of priority content
         )
     ''')
-    # History table with original file content
+    # Enhanced document_history table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS document_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, document_id TEXT, status TEXT,
-            timestamp TEXT, details TEXT, doc_type TEXT, confidence REAL,
-            file_content_encoded TEXT, -- To store the raw file on ingest
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_id TEXT,
+            status TEXT,
+            timestamp TEXT,
+            details TEXT,
+            doc_type TEXT,
+            confidence REAL,
+            file_content_encoded TEXT,
+            is_vip BOOLEAN DEFAULT 0,          -- New: VIP status in history
+            vip_level TEXT DEFAULT 'NONE',     -- New: VIP level in history
+            summary TEXT,                      -- New: Document summary in history
+            priority_content TEXT,             -- New: JSON string of priority content in history
             FOREIGN KEY (document_id) REFERENCES document_status (document_id)
         )
     ''')
-    # Mailbox Configurations Table
+    # Mailbox Configurations Table (unchanged, but ensure types match)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS mailboxes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,6 +88,35 @@ def setup_database():
             status_timestamp TEXT
         )
     ''')
+    # New VIP Documents Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS vip_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_id TEXT UNIQUE NOT NULL,
+            filename TEXT NOT NULL,
+            vip_level TEXT NOT NULL,
+            sender TEXT,
+            summary TEXT,
+            priority_content TEXT,
+            status TEXT DEFAULT 'Pending Review',
+            risk_assessment TEXT,
+            last_updated TEXT,
+            FOREIGN KEY (document_id) REFERENCES document_status (document_id)
+        )
+    ''')
+    # New VIP Contacts Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS vip_contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            name TEXT,
+            vip_level TEXT NOT NULL,
+            department TEXT,
+            role TEXT,
+            added_at TEXT
+        )
+    ''')
+
     conn.commit()
     conn.close()
     print("[DB] Database tables checked/created.")
@@ -94,38 +152,71 @@ def consume_status_updates():
                 status = message.get("status")
                 timestamp = message.get("timestamp")
                 
+                # New fields from extractor and classifier
+                doc_type = message.get("doc_type")
+                confidence = message.get("confidence")
+                is_vip = message.get("is_vip", False)
+                vip_level = message.get("vip_level", "NONE")
+                summary = message.get("summary")
+                priority_content = message.get("priority_content")
+
                 try:
                     conn = sqlite3.connect(DB_NAME)
                     cursor = conn.cursor()
 
-                    # Insert into history table, including file content if present
+                    # Insert into history table
                     cursor.execute("""
-                        INSERT INTO document_history (document_id, status, timestamp, details, doc_type, confidence, file_content_encoded)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO document_history 
+                        (document_id, status, timestamp, details, doc_type, confidence, file_content_encoded, is_vip, vip_level, summary, priority_content)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         doc_id, status, timestamp,
                         json.dumps(message.get("details", {})),
-                        message.get("doc_type"), message.get("confidence"),
-                        message.get("details", {}).get("file_content_encoded")
+                        doc_type, confidence,
+                        message.get("details", {}).get("file_content_encoded"),
+                        is_vip, vip_level, summary, json.dumps(priority_content)
                     ))
                     
-                    # Get existing data before updating
-                    cursor.execute("SELECT filename, doc_type, confidence FROM document_status WHERE document_id = ?", (doc_id,))
-                    existing_data = cursor.fetchone() or (None, None, None)
-                    
-                    # Update (or insert) the main status table
+                    # Get existing data for filename to prevent it from becoming NULL
+                    cursor.execute("SELECT filename FROM document_status WHERE document_id = ?", (doc_id,))
+                    existing_filename = cursor.fetchone()
+                    filename_to_use = message.get("details", {}).get("filename", existing_filename[0] if existing_filename else "Unknown_File")
+
+                    # Update (or insert) the main document_status table
                     cursor.execute("""
                         INSERT OR REPLACE INTO document_status 
-                        (document_id, filename, status, doc_type, confidence, last_updated)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (document_id, filename, status, doc_type, confidence, last_updated, is_vip, vip_level, summary, priority_content)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         doc_id,
-                        message.get("details", {}).get("filename", existing_data[0]),
+                        filename_to_use,
                         status,
-                        message.get("doc_type", existing_data[1]),
-                        message.get("confidence", existing_data[2]),
-                        timestamp
+                        doc_type,
+                        confidence,
+                        timestamp,
+                        is_vip,
+                        vip_level,
+                        summary,
+                        json.dumps(priority_content) # Store priority_content as JSON string
                     ))
+
+                    # If it's a VIP document and Routed, add/update vip_documents table
+                    if is_vip and status == "Routed":
+                        sender = message.get("details", {}).get("sender", "N/A") # Get sender if available from ingestion details
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO vip_documents
+                            (document_id, filename, vip_level, sender, summary, priority_content, status, last_updated)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            doc_id,
+                            filename_to_use,
+                            vip_level,
+                            sender,
+                            summary,
+                            json.dumps(priority_content),
+                            "Routed", # Initial status in VIP dashboard
+                            datetime.now(UTC).isoformat()
+                        ))
                     
                     conn.commit()
                     
@@ -203,7 +294,16 @@ def get_document_history(document_id: str):
     conn.close()
     if not history:
         raise HTTPException(status_code=404, detail="History not found")
-    return [dict(row) for row in history]
+    # Parse JSON strings back to dicts for details and priority_content
+    parsed_history = []
+    for row in history:
+        row_dict = dict(row)
+        if row_dict.get('details'):
+            row_dict['details'] = json.loads(row_dict['details'])
+        if row_dict.get('priority_content'):
+            row_dict['priority_content'] = json.loads(row_dict['priority_content'])
+        parsed_history.append(row_dict)
+    return parsed_history
 
 def get_doc_for_reprocessing(document_id: str):
     conn = sqlite3.connect(DB_NAME)
@@ -214,7 +314,7 @@ def get_doc_for_reprocessing(document_id: str):
     conn.close()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    return doc
+    return dict(doc) # Return as dict
 
 @app.post("/re-classify/{document_id}")
 def re_classify_document(document_id: str):
@@ -222,16 +322,25 @@ def re_classify_document(document_id: str):
     history_events = get_document_history(document_id)
     
     extracted_details = {}
+    extracted_summary = ""
+    extracted_priority_content = {}
+    extracted_entities = {} # Ensure entities are passed through
+
     for event in reversed(history_events):
         if event['status'] == 'Extracted':
-            extracted_details = json.loads(event['details'])
+            extracted_details = event.get('details', {})
+            extracted_summary = event.get('summary', '')
+            extracted_priority_content = event.get('priority_content', {})
+            extracted_entities = extracted_details.get('entities', {}) # Get entities from details
             break
 
     message = {
         'document_id': doc['document_id'],
         'filename': doc['filename'],
         'extracted_text': extracted_details.get('extracted_text', ''),
-        'entities': extracted_details.get('entities', {})
+        'summary': extracted_summary, # Pass summary
+        'priority_content': extracted_priority_content, # Pass priority content
+        'entities': extracted_entities # Pass entities
     }
     
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
@@ -259,9 +368,10 @@ def re_extract_document(document_id: str):
         if not file_content_b64:
             raise HTTPException(status_code=404, detail="Encoded file content not found in ingestion history.")
 
-        # 4. Get the original filename from the 'details' JSON
-        ingested_details = json.loads(ingested_event.get('details', '{}'))
+        # 4. Get the original filename and sender from the 'details' JSON
+        ingested_details = ingested_event.get('details', {})
         original_filename = ingested_details.get('filename')
+        sender = ingested_details.get('sender') # Extract sender
         if not original_filename:
              raise HTTPException(status_code=404, detail="Original filename not found in ingestion history.")
 
@@ -269,10 +379,11 @@ def re_extract_document(document_id: str):
         message_to_extractor = {
             'document_id': document_id,
             'filename': original_filename,
-            # No longer need storage_path, we use the content directly
             'file_content': file_content_b64, 
             'priority': 'high',
-            'source': 'manual_re-extract'
+            'source': 'manual_re-extract',
+            'content_type': ingested_details.get('content_type', 'application/octet-stream'), # Ensure content_type is passed
+            'sender': sender # Pass sender
         }
 
         # 6. Publish the message to RabbitMQ
@@ -290,7 +401,6 @@ def re_extract_document(document_id: str):
         return {"status": "success", "detail": f"Document {document_id} sent for re-extraction."}
 
     except HTTPException as http_exc:
-        # Re-raise HTTP exceptions to be handled by FastAPI
         raise http_exc
     except Exception as e:
         print(f"[API Error] Failed to re-extract {document_id}: {e}")
@@ -319,7 +429,7 @@ def add_mailbox(mailbox: Mailbox):
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO mailboxes (email, app_password_encoded, folder, status, status_timestamp) VALUES (?, ?, ?, ?, ?)",
-            (mailbox.email, encoded_password, mailbox.folder, "Connected", datetime.utcnow().isoformat())
+            (mailbox.email, encoded_password, mailbox.folder, "Connected", datetime.now(UTC).isoformat()) # Use datetime.now(UTC)
         )
         conn.commit()
         conn.close()
@@ -335,6 +445,72 @@ def delete_mailbox(mailbox_id: int):
     conn.commit()
     conn.close()
     return {"status": "success", "id": mailbox_id}
+
+# --- VIP Management API Endpoints ---
+@app.get("/vip-documents")
+def get_vip_documents():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM vip_documents ORDER BY last_updated DESC LIMIT 100")
+    vip_docs = cursor.fetchall()
+    conn.close()
+    parsed_vip_docs = []
+    for doc in vip_docs:
+        doc_dict = dict(doc)
+        if doc_dict.get('priority_content'):
+            doc_dict['priority_content'] = json.loads(doc_dict['priority_content'])
+        parsed_vip_docs.append(doc_dict)
+    return parsed_vip_docs
+
+@app.get("/vip-contacts")
+def get_vip_contacts():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM vip_contacts ORDER BY added_at DESC")
+    contacts = cursor.fetchall()
+    conn.close()
+    return [dict(contact) for contact in contacts]
+
+@app.post("/vip-contacts")
+def add_vip_contact(contact: VIPContactCreate):
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO vip_contacts (email, name, vip_level, department, role, added_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (contact.email, contact.name, contact.vip_level, contact.department, contact.role, datetime.now(UTC).isoformat())
+        )
+        conn.commit()
+        conn.close()
+        return {"status": "success", "email": contact.email}
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="VIP contact with this email already exists.")
+
+@app.delete("/vip-contacts/{contact_id}")
+def delete_vip_contact(contact_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM vip_contacts WHERE id = ?", (contact_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "id": contact_id}
+
+@app.put("/vip-documents/{document_id}")
+def update_vip_document_status(document_id: str, update: VIPDocumentUpdate):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE vip_documents SET status = ?, risk_assessment = ?, last_updated = ? WHERE document_id = ?",
+        (update.status, update.risk_assessment, datetime.now(UTC).isoformat(), document_id)
+    )
+    conn.commit()
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="VIP document not found.")
+    conn.close()
+    return {"status": "success", "document_id": document_id, "new_status": update.status}
 
 # --- WebSocket Endpoint ---
 @app.websocket("/ws")

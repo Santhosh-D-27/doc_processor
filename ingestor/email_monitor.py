@@ -35,6 +35,9 @@ except Exception as e:
 def get_mailboxes_from_db():
     mailboxes = []
     if not os.path.exists(DB_NAME):
+        # Initial database setup will be handled by web_ui/main.py lifespan
+        # If DB doesn't exist yet, just return empty list.
+        print("[DB] Database file not found, no mailboxes to fetch yet.")
         return []
     try:
         conn = sqlite3.connect(DB_NAME)
@@ -96,7 +99,12 @@ def publish_message(message: dict):
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
     channel.queue_declare(queue=QUEUE_NAME, durable=True)
-    channel.basic_publish(exchange='', routing_key=QUEUE_NAME, body=json.dumps(message))
+    channel.basic_publish(
+        exchange='',
+        routing_key=QUEUE_NAME,
+        body=json.dumps(message),
+        properties=pika.BasicProperties(delivery_mode=2)
+    )
     connection.close()
     doc_id = message.get('document_id')
     print(f" [x] Sent '{message['filename']}' from email to the queue (Doc ID: {doc_id}).")
@@ -180,7 +188,7 @@ def process_single_mailbox(config):
                 publish_message(message)
                 publish_status_update(
                     doc_id=document_id, status="Ingested",
-                    details={"filename": original_filename, "source": f"Email ({email_address})", "storage_path": storage_file_path}
+                    details={"filename": original_filename, "source": f"Email ({email_address})", "storage_path": storage_file_path, "file_content_encoded": encoded_content, "content_type": part.get_content_type(), "sender": sender} # Pass content for re-extract
                 )
 
             save_processed_id(state_conn, uid_str)

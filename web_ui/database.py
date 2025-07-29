@@ -1,10 +1,9 @@
 # web_ui/database.py (UPDATED)
 import os
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Float
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Float, Boolean # Import Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
-import os # Import os for path manipulation
+from datetime import datetime, UTC # Import UTC
 
 # SQLite database URL. 'state.db' will be created IN THE SAME DIRECTORY AS THIS FILE.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Get the directory of database.py
@@ -25,17 +24,22 @@ class Document(Base):
     """
     Represents a document in the pipeline, tracking its latest status.
     """
-    __tablename__ = "documents"
+    __tablename__ = "document_status" # Renamed to match the sqlite3 table name in web_ui/main.py
 
-    id = Column(String, primary_key=True, index=True) # Unique ID for the document (e.g., hash or unique identifier)
+    document_id = Column(String, primary_key=True, index=True) # Unique ID for the document (e.g., hash or unique identifier)
     filename = Column(String, index=True, nullable=False)
-    current_status = Column(String, default="Ingested", nullable=False)
+    status = Column(String, default="Ingested", nullable=False) # Renamed from current_status
     doc_type = Column(String, nullable=True) # Classified type (e.g., INVOICE, RESUME)
     confidence = Column(Float, nullable=True) # Confidence score from classifier
-    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    # You might add more fields here like source, original_size, etc.
+    last_updated = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False) # Use datetime.now(UTC)
 
-class DocumentStep(Base):
+    # New fields for VIP and summarization features
+    is_vip = Column(Boolean, default=False, nullable=False)
+    vip_level = Column(String, nullable=True) # E.g., 'HIGH', 'MEDIUM', 'LOW', 'NONE'
+    summary = Column(Text, nullable=True) # 2-3 sentence summary
+    priority_content = Column(Text, nullable=True) # JSON string of priority content
+
+class DocumentHistory(Base): # Renamed from DocumentStep
     """
     Records each step a document goes through in the pipeline.
     This provides the history for the progress bar and hover details.
@@ -44,37 +48,64 @@ class DocumentStep(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(String, index=True, nullable=False) # Foreign key to Document
-    step_name = Column(String, nullable=False) # e.g., "Ingested", "Extracted", "Classified", "Routed"
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
-    details = Column(Text, nullable=True) # e.g., "OCR took 3.2s", "Type=Contract (94% confidence)"
-    # You might add more specific metrics here if needed
+    status = Column(String, nullable=False) # Renamed from step_name
+    timestamp = Column(DateTime, default=datetime.now(UTC), nullable=False) # Use datetime.now(UTC)
+    details = Column(Text, nullable=True) # JSON string of details
+    doc_type = Column(String, nullable=True)
+    confidence = Column(Float, nullable=True)
+    file_content_encoded = Column(Text, nullable=True) # Stored raw file on ingest
+
+    # Additional fields for history if relevant (matching status updates)
+    is_vip = Column(Boolean, default=False, nullable=False)
+    vip_level = Column(String, nullable=True)
+    summary = Column(Text, nullable=True)
+    priority_content = Column(Text, nullable=True)
+
+
 class MailboxConfig(Base):
     """
     Stores configuration and authentication tokens for connected email mailboxes.
     """
-    __tablename__ = "mailbox_configs"
+    __tablename__ = "mailboxes" # Match the sqlite3 table name in web_ui/main.py
 
-    id = Column(String, primary_key=True, index=True) # Unique ID for this mailbox config (e.g., UUID)
-    user_id = Column(String, nullable=False) # Identifies which UI user connected this mailbox (if you add user auth later)
-    email_address = Column(String, unique=True, nullable=False)
-    provider = Column(String, nullable=False, default="Gmail") # e.g., "Gmail", "Outlook"
-    
-    # OAuth Tokens - Sensitive, ideally encrypted in production
-    access_token = Column(String, nullable=False)
-    refresh_token = Column(String, nullable=True) # Important for long-lived access
-    token_expiry = Column(DateTime, nullable=True)
+    id = Column(Integer, primary_key=True, index=True) # Changed to Integer to match existing DB
+    email = Column(String, unique=True, nullable=False)
+    app_password_encoded = Column(String, nullable=False)
+    folder = Column(String, nullable=False)
+    status = Column(String, default='Pending')
+    status_timestamp = Column(DateTime, nullable=True) # Ensure this is DateTime
 
-    # Monitoring Settings
-    folders_to_monitor = Column(String, default="Inbox", nullable=False) # Comma-separated list (e.g., "Inbox,Invoices")
-    filter_sender_whitelist = Column(Text, nullable=True) # JSON string of list of senders
-    filter_subject_keywords = Column(Text, nullable=True) # JSON string of list of keywords
-    filter_file_types = Column(String, nullable=True) # Comma-separated (e.g., "pdf,docx")
+class VIPDocument(Base):
+    """
+    Stores metadata and analysis specific to VIP documents.
+    """
+    __tablename__ = "vip_documents"
 
-    # Status & Metadata
-    is_active = Column(Integer, default=1) # 1 for active, 0 for inactive
-    last_synced_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(String, unique=True, nullable=False) # Link to main document
+    filename = Column(String, nullable=False)
+    vip_level = Column(String, nullable=False) # HIGH, MEDIUM, LOW
+    sender = Column(String, nullable=True)
+    summary = Column(Text, nullable=True)
+    priority_content = Column(Text, nullable=True) # JSON string
+    status = Column(String, default="Pending Review", nullable=False) # E.g., "Pending Review", "Reviewed", "Archived"
+    risk_assessment = Column(String, nullable=True) # E.g., "Low", "Medium", "High"
+    last_updated = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
+
+class VIPContact(Base):
+    """
+    Manages a directory of VIP contacts for identification.
+    """
+    __tablename__ = "vip_contacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=True)
+    vip_level = Column(String, nullable=False) # HIGH, MEDIUM, LOW
+    department = Column(String, nullable=True)
+    role = Column(String, nullable=True)
+    added_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+
 # Create a SessionLocal class to get a database session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -85,6 +116,10 @@ def create_db_tables():
     print("Database tables created.")
 
 # Dependency to get DB session (for FastAPI)
+# This part is for SQLAlchemy, but web_ui/main.py uses raw sqlite3.
+# The user's request implies they want me to adapt the existing code.
+# I will keep this for completeness if they decide to switch to SQLAlchemy ORM,
+# but the main.py will be updated with raw sqlite3 operations.
 def get_db():
     db = SessionLocal()
     try:

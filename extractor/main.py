@@ -78,27 +78,39 @@ def extract_text_from_document(content_bytes: bytes, content_type: str, filename
     except Exception as e:
         return f"Error during text extraction: {e}"
 
-def cleanup_and_extract_entities_with_llm(text: str) -> dict:
-    if not model: return {"cleaned_text": text, "entities": {"error": "Gemini client not available."}}
+def analyze_document_content_with_llm(text: str) -> dict:
+    if not model: return {"cleaned_text": text, "summary": "Gemini client not available.", "priority_content": {"error": "Gemini client not available."}}
     if len(text.strip()) < 10:
         print("  -> Text too short for LLM processing, skipping.")
-        return {"cleaned_text": text, "entities": {}}
-    print("  -> Sending text to Gemini for cleanup and entity extraction...")
+        return {"cleaned_text": text, "summary": "Text too short for summarization.", "priority_content": {}}
+    print("  -> Sending text to Gemini for cleanup, summarization, and entity extraction...")
     try:
         prompt = f"""
         Analyze the following text extracted from a document.
         1. Clean up any OCR errors, fix formatting, and return the corrected text.
-        2. Extract key entities from the text. The entities to extract are: dates, names of people or companies, and invoice amounts or totals.
-        3. Return the result as a single, valid JSON object with two keys: "cleaned_text" and "entities".
-        4. If the text is nonsensical, garbled, or contains no extractable entities, return the "cleaned_text" as an empty string and the "entities" as an empty JSON object.
+        2. Generate a concise 2-3 sentence summary of the document's content.
+        3. Extract key priority content from the text. The entities to extract are:
+            - "deadlines": Critical deadlines and dates (e.g., "Payment due: June 1st, 2024")
+            - "key_parties": Important people or companies involved (e.g., "Acme Corp (vendor)", "John Doe")
+            - "financial_commitments": Financial amounts and commitments (e.g., "Total amount: $1,250.75", "$50,000 budget approval")
+            - "action_items": Specific actions required (e.g., "Process payment", "Requires signature")
+            - "urgency_level": Classify the overall urgency as "high", "medium", or "low" based on the content (e.g., presence of "urgent", short deadlines).
+
+        4. Return the result as a single, valid JSON object with the following keys:
+            - "cleaned_text": The corrected and formatted text.
+            - "summary": The 2-3 sentence summary.
+            - "priority_content": A JSON object containing the extracted priority content. If a category is not found, its value should be an empty list or "N/A" for urgency_level.
 
         Example output format:
         {{
           "cleaned_text": "The corrected and formatted text goes here...",
-          "entities": {{
-            "dates": ["2024-05-15"],
-            "names": ["John Doe", "Acme Corp"],
-            "amounts": ["$1,250.75"]
+          "summary": "This is a concise summary of the document in 2-3 sentences.",
+          "priority_content": {{
+            "deadlines": ["Payment due: June 1st, 2024"],
+            "key_parties": ["Acme Corp (vendor)", "Client Corp (customer)"],
+            "financial_commitments": ["Total amount: $1,250.75"],
+            "action_items": ["Process payment", "Update accounting records"],
+            "urgency_level": "medium"
           }}
         }}
 
@@ -113,12 +125,12 @@ def cleanup_and_extract_entities_with_llm(text: str) -> dict:
             result = json.loads(json_response_text)
         except json.JSONDecodeError:
             print("  -> Gemini Warning: Model did not return valid JSON. Returning raw text.")
-            return {"cleaned_text": text, "entities": {"error": "LLM did not return valid JSON."}}
+            return {"cleaned_text": text, "summary": "Could not summarize due to LLM output error.", "priority_content": {"error": "LLM did not return valid JSON."}}
         print("  -> Successfully processed text with Gemini.")
         return result
     except Exception as e:
         print(f"  -> Gemini Error: {e}")
-        return {"cleaned_text": text, "entities": {"error": f"LLM processing failed: {e}"}}
+        return {"cleaned_text": text, "summary": f"LLM summarization failed: {e}", "priority_content": {"error": f"LLM processing failed: {e}"}}
 
 # --- MAIN AGENT LOGIC ---
 def main():
@@ -145,13 +157,18 @@ def main():
             # --- Perform all slow processing first ---
             file_content_bytes = base64.b64decode(message['file_content'])
             raw_text = extract_text_from_document(file_content_bytes, message['content_type'], filename)
-            processed_data = cleanup_and_extract_entities_with_llm(raw_text)
+            
+            # Use the new analysis function
+            processed_data = analyze_document_content_with_llm(raw_text)
             
             classifier_message = {
-                'document_id': document_id, 'filename': filename,
+                'document_id': document_id,
+                'filename': filename,
                 'context': message.get('context', ''),
                 'extracted_text': processed_data.get('cleaned_text', raw_text),
-                'entities': processed_data.get('entities', {})
+                'summary': processed_data.get('summary', 'No summary available.'), # Add summary
+                'priority_content': processed_data.get('priority_content', {}), # Add priority content
+                'entities': processed_data.get('entities', {}) # Keep existing entities
             }
             
             # --- Use a fresh connection to publish results ---
@@ -160,7 +177,7 @@ def main():
             publish_channel.queue_declare(queue=PUBLISH_QUEUE_NAME, durable=True)
             publish_channel.basic_publish(exchange='', routing_key=PUBLISH_QUEUE_NAME, body=json.dumps(classifier_message))
             publish_connection.close()
-            print(f" [>] Sent cleaned text and entities from '{filename}' for classification.")
+            print(f" [>] Sent cleaned text, summary, and entities from '{filename}' for classification.")
 
             # --- Publish status update ---
             publish_status_update(
@@ -169,6 +186,8 @@ def main():
                 details={
                     "chars_extracted": len(raw_text),
                     "extracted_text": processed_data.get('cleaned_text', raw_text),
+                    "summary": processed_data.get('summary', 'No summary available.'), # Add summary to status details
+                    "priority_content": processed_data.get('priority_content', {}), # Add priority content to status details
                     "entities": processed_data.get('entities', {})
                 }
             )

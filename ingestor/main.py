@@ -55,7 +55,7 @@ def publish_status_update(doc_id: str, status: str, details: dict = None):
 
 def decide_priority(file_size: int, sender: str = None) -> str:
     """Decides priority based on sender or file size."""
-    if sender and "ceo" in sender.lower():
+    if sender and ("ceo" in sender.lower() or "director" in sender.lower() or "vp" in sender.lower()): # Added more keywords
         return "high"
     if file_size > 1_000_000:  # More than 1MB
         return "high"
@@ -109,7 +109,7 @@ async def upload_document(
         publish_status_update(
             doc_id=document_id,
             status="Ingested",
-            details={"filename": original_filename, "source": "API Upload", "storage_path": file_path}
+            details={"filename": original_filename, "source": "API Upload", "storage_path": file_path, "file_content_encoded": encoded_file_content, "content_type": file.content_type, "sender": sender} # Pass content for re-extract
         )
         
         return {"document_id": document_id, "filename": original_filename, "status": "published"}

@@ -48,7 +48,7 @@ def publish_status_update(doc_id: str, status: str, details: dict = None):
 
 def decide_priority(file_size: int, folder: str = None) -> str:
     """Determines priority based on file size or source folder."""
-    if folder and "high_priority" in folder:
+    if folder and "high_priority" in folder: # Assuming a folder named 'high_priority' exists
         return "high"
     if file_size > 1_000_000:  # More than 1MB
         return "high"
@@ -102,18 +102,18 @@ class DocumentHandler(FileSystemEventHandler):
                 'document_id': document_id,
                 'filename': original_filename,
                 'storage_path': storage_file_path, # Pass the new path
-                'content_type': 'application/octet-stream',
+                'content_type': 'application/octet-stream', # Default content type, can be improved
                 'file_content': encoded_content,
                 'priority': priority,
                 'source': 'file_share',
-                'sender': 'system_fileshare_monitor'
+                'sender': 'system_fileshare_monitor' # Default sender for file monitor
             }
             publish_message(message)
 
             publish_status_update(
                 doc_id=document_id,
                 status="Ingested",
-                details={"filename": original_filename, "source": "File Share", "storage_path": storage_file_path}
+                details={"filename": original_filename, "source": "File Share", "storage_path": storage_file_path, "file_content_encoded": encoded_content, "content_type": 'application/octet-stream', "sender": 'system_fileshare_monitor'} # Pass content for re-extract
             )
 
         except Exception as e:
