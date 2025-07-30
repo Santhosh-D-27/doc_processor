@@ -133,7 +133,7 @@ const ProgressBar = ({ history = [] }) => {
                 <span className="text-gray-200 ml-2">{latestUpdate.doc_type}</span>
               </div>
             )}
-            {latestUpdate.confidence !== undefined && (
+            {latestUpdate.confidence !== undefined && latestUpdate.confidence !== null && (
               <div>
                 <span className="text-gray-400">Confidence:</span>
                 <span className={`ml-2 ${
