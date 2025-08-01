@@ -6,6 +6,7 @@ import google.generativeai as genai
 from datetime import datetime, UTC
 from dotenv import load_dotenv
 import re
+import traceback
 
 load_dotenv()
 
@@ -15,14 +16,14 @@ CONSUME_QUEUE_NAME = 'classification_queue'
 PUBLISH_QUEUE_NAME = 'routing_queue'
 STATUS_QUEUE_NAME = 'document_status_queue'
 
-# VIP-Specific Configurations (Add these to your .env file)
-VIP_ALERT_THRESHOLD = os.getenv("VIP_ALERT_THRESHOLD", "medium").lower() # 'high', 'medium', 'low'
+# VIP-Specific Configurations
+VIP_ALERT_THRESHOLD = os.getenv("VIP_ALERT_THRESHOLD", "medium").lower()
 
 # Custom VIP Rules
 CUSTOM_VIP_KEYWORDS = [
     'chief executive officer', 'ceo', 'director', 'vice president', 'vp',
     'senior manager', 'head of', 'board member', 'hr director', 'legal counsel'
-] # Added 'hr director', 'legal counsel' as common VIP indicators
+]
 
 CUSTOM_VIP_DOMAINS = [
     'board@yourcompany.com', 'executives@yourcompany.com', 'leadership@yourcompany.com'
@@ -177,10 +178,34 @@ DOCUMENT_PATTERNS = {
     }
 }
 
+# --- IMPROVED CONNECTION MANAGEMENT ---
+class RabbitMQManager:
+    def __init__(self, host):
+        self.host = host
+        
+    def get_fresh_connection(self):
+        """Get a fresh connection for one-time operations"""
+        try:
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host=self.host,
+                    heartbeat=600,
+                    blocked_connection_timeout=300,
+                )
+            )
+            return connection
+        except Exception as e:
+            print(f"[!] Failed to create fresh connection: {e}")
+            return None
+
+rabbitmq_manager = RabbitMQManager(RABBITMQ_HOST)
+
 # --- HELPER & CORE FUNCTIONS ---
 def publish_status_update(doc_id: str, status: str, details: dict = None, doc_type: str = None, confidence: float = None, is_vip: bool = False, vip_level: str = None):
+    """Publish status update with improved error handling"""
     if details is None: 
         details = {}
+    
     status_message = {
         "document_id": doc_id, 
         "status": status, 
@@ -191,23 +216,38 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, doc_ty
         "is_vip": is_vip, 
         "vip_level": vip_level
     }
+    
+    connection = None
     try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        connection = rabbitmq_manager.get_fresh_connection()
+        if not connection:
+            raise Exception("Failed to get fresh connection for status update")
+            
         channel = connection.channel()
         channel.queue_declare(queue=STATUS_QUEUE_NAME, durable=True)
         channel.basic_publish(
             exchange='', 
             routing_key=STATUS_QUEUE_NAME, 
             body=json.dumps(status_message),
-            properties=pika.BasicProperties(delivery_mode=2)  # Make message persistent
+            properties=pika.BasicProperties(delivery_mode=2)
         )
-        connection.close()
-        print(f" [->] Status update published for Doc ID {doc_id}: {status}")
+        print(f"[->] Status update published for Doc ID {doc_id}: {status}")
+        
     except Exception as e:
-        print(f" [!!!] WARNING: Failed to publish status update for {doc_id}: {e}")
+        print(f"[!!!] WARNING: Failed to publish status update for {doc_id}: {e}")
+        print(f"[!!!] Status error traceback: {traceback.format_exc()}")
+    finally:
+        if connection:
+            try:
+                connection.close()
+            except Exception as e:
+                print(f"[!] Error closing status connection: {e}")
 
 def classify_with_rule_based(text: str) -> dict:
     """Enhanced rule-based classification with pattern matching"""
+    if not text or not text.strip():
+        return {"doc_type": "UNKNOWN", "confidence_score": 0.0, "analysis": {}}
+    
     text_lower = text.lower()
     text_lines = text.split('\n')
     
@@ -227,9 +267,12 @@ def classify_with_rule_based(text: str) -> dict:
         
         # Check regex patterns
         for pattern in patterns['patterns']:
-            if re.search(pattern, text_lower, re.IGNORECASE):
-                pattern_count += 1
-                score += 2  # Patterns weighted higher
+            try:
+                if re.search(pattern, text_lower, re.IGNORECASE):
+                    pattern_count += 1
+                    score += 2
+            except re.error:
+                continue  # Skip invalid regex patterns
         
         # Check structure indicators
         for indicator in patterns['structure_indicators']:
@@ -239,32 +282,29 @@ def classify_with_rule_based(text: str) -> dict:
         
         # Special handling for contract vs memo confusion
         if doc_type == 'CONTRACT':
-            # Look for specific contract language
             contract_phrases = ['party of the first part', 'party of the second part', 
                               'whereas', 'witnesseth', 'consideration', 'covenant']
             for phrase in contract_phrases:
                 if phrase in text_lower:
-                    score += 3  # Strong contract indicators
+                    score += 3
         
         elif doc_type == 'MEMO':
-            # Check for memo header structure
             memo_header_found = False
-            for line in text_lines[:10]:  # Check first 10 lines
+            for line in text_lines[:10]:
                 line_lower = line.lower().strip()
                 if any(header in line_lower for header in ['from:', 'to:', 'date:', 'subject:', 're:']):
                     memo_header_found = True
                     break
             
             if memo_header_found:
-                score += 4  # Strong memo indicator
+                score += 4
             
-            # Penalize if it has contract-like language
             if any(phrase in text_lower for phrase in ['agreement', 'contract', 'parties agree']):
                 score -= 2
         
-        # Calculate confidence based on multiple factors
+        # Calculate confidence
         total_possible = len(patterns['keywords']) + len(patterns['patterns']) * 2 + len(patterns['structure_indicators']) * 1.5
-        confidence = min(score / max(total_possible * 0.3, 1), 1.0)  # Cap at 1.0
+        confidence = min(score / max(total_possible * 0.3, 1), 1.0)
         
         scores[doc_type] = {
             'score': score,
@@ -279,7 +319,6 @@ def classify_with_rule_based(text: str) -> dict:
         best_type = max(scores.keys(), key=lambda k: scores[k]['score'])
         best_score = scores[best_type]
         
-        # If best score is too low, return unknown
         if best_score['score'] < 2:
             return {"doc_type": "UNKNOWN", "confidence_score": 0.0, "analysis": scores}
         
@@ -292,9 +331,11 @@ def classify_with_rule_based(text: str) -> dict:
     return {"doc_type": "UNKNOWN", "confidence_score": 0.0, "analysis": {}}
 
 def classify_with_llm(text: str) -> dict:
-    if not model or not text.strip():
+    """Classify document using LLM with better error handling"""
+    if not model or not text or not text.strip():
         return {"doc_type": "UNKNOWN", "confidence_score": 0.0}
-    print("  -> Using Gemini for document classification...")
+    
+    print("-> Using Gemini for document classification...")
     try:
         prompt = f"""
         Analyze the following document text and classify it into ONE of these specific categories:
@@ -322,38 +363,44 @@ def classify_with_llm(text: str) -> dict:
 
         Document text:
         ---
-        {text}
+        {text[:2000]}  # Limit text to avoid token limits
         ---
         """
+        
         response = model.generate_content(prompt)
-        json_response_text = response.text.strip().replace('``````', '')
+        json_response_text = response.text.strip()
         
         # Clean up response
-        json_response_text = json_response_text.strip()
         if json_response_text.startswith('```'):
             json_response_text = json_response_text[3:]
         if json_response_text.endswith('```'):
             json_response_text = json_response_text[:-3]
+        if json_response_text.startswith('json'):
+            json_response_text = json_response_text[4:]
         
         result = json.loads(json_response_text)
         doc_type = result.get('doc_type', 'UNKNOWN')
         confidence = result.get('confidence_score', 0.0)
         
-        print(f"  -> Gemini classified as '{doc_type}' with confidence {confidence}")
+        print(f"-> Gemini classified as '{doc_type}' with confidence {confidence}")
         return result
+        
     except Exception as e:
-        print(f"  -> Gemini Classification Error: {e}")
+        print(f"-> Gemini Classification Error: {e}")
+        print(f"-> Gemini error traceback: {traceback.format_exc()}")
         return {"doc_type": "LLM_ERROR", "confidence_score": 0.0}
 
 def hybrid_classify(text: str) -> dict:
     """Combine rule-based and LLM classification for better accuracy"""
+    if not text or not text.strip():
+        return {"doc_type": "UNKNOWN", "confidence_score": 0.0, "method": "no_text"}
     
     # First try rule-based classification
     rule_result = classify_with_rule_based(text)
     rule_confidence = rule_result.get('confidence_score', 0.0)
     rule_type = rule_result.get('doc_type', 'UNKNOWN')
     
-    print(f"  -> Rule-based: {rule_type} (confidence: {rule_confidence:.2f})")
+    print(f"-> Rule-based: {rule_type} (confidence: {rule_confidence:.2f})")
     
     # If rule-based is confident, use it
     if rule_confidence >= 0.8 and rule_type != 'UNKNOWN':
@@ -400,204 +447,258 @@ def hybrid_classify(text: str) -> dict:
     }
 
 def determine_vip_status(sender: str, extracted_text: str, priority_content: dict) -> tuple:
-    """Fixed return type annotation"""
+    """Determine VIP status with improved error handling"""
     is_vip = False
-    vip_level = "NONE" # Default to NONE
+    vip_level = "NONE"
 
-    # 1. Domain-Based VIP Detection
-    if sender:
-        sender_email = sender.split('<')[-1].replace('>', '').strip().lower()
-        for domain in CUSTOM_VIP_DOMAINS:
-            if domain in sender_email:
+    try:
+        # Safely handle None values
+        sender = sender or ""
+        extracted_text = extracted_text or ""
+        priority_content = priority_content or {}
+
+        # 1. Domain-Based VIP Detection
+        if sender:
+            sender_email = sender.split('<')[-1].replace('>', '').strip().lower()
+            for domain in CUSTOM_VIP_DOMAINS:
+                if domain in sender_email:
+                    is_vip = True
+                    vip_level = "HIGH"
+                    print(f"-> Detected VIP (HIGH) based on sender domain: {domain}")
+                    return True, vip_level
+
+        # 2. Keyword Analysis
+        lower_sender = sender.lower()
+        lower_extracted_text = extracted_text.lower()
+        
+        # Check for HIGH VIP keywords first
+        high_vip_keywords = ['ceo', 'chief executive officer', 'board member', 'director', 'founder']
+        for keyword in high_vip_keywords:
+            if keyword in lower_sender or keyword in lower_extracted_text:
                 is_vip = True
-                vip_level = "HIGH" # Domains like 'executives@' are typically high priority
-                print(f"  -> Detected VIP (HIGH) based on sender domain: {domain}")
-                break
-        if is_vip: 
-            return True, vip_level
+                vip_level = "HIGH"
+                print(f"-> Detected VIP (HIGH) based on keyword: {keyword}")
+                return True, vip_level
 
-    # 2. Keyword Analysis (in sender, subject, or extracted text)
-    lower_sender = sender.lower() if sender else ""
-    lower_extracted_text = extracted_text.lower()
-    
-    # Check for HIGH VIP keywords first
-    high_vip_keywords = ['ceo', 'chief executive officer', 'board member', 'director', 'founder']
-    for keyword in high_vip_keywords:
-        if keyword in lower_sender or keyword in lower_extracted_text:
-            is_vip = True
-            vip_level = "HIGH"
-            print(f"  -> Detected VIP (HIGH) based on keyword: {keyword}")
-            return True, vip_level
-
-    # Check for MEDIUM VIP keywords
-    medium_vip_keywords = ['vp', 'vice president', 'senior manager', 'department head', 'legal counsel', 'hr director']
-    for keyword in medium_vip_keywords:
-        if keyword in lower_sender or keyword in lower_extracted_text:
+        # Check for MEDIUM VIP keywords
+        medium_vip_keywords = ['vp', 'vice president', 'senior manager', 'department head', 'legal counsel', 'hr director']
+        for keyword in medium_vip_keywords:
+            if keyword in lower_sender or keyword in lower_extracted_text:
+                is_vip = True
+                vip_level = "MEDIUM"
+                print(f"-> Detected VIP (MEDIUM) based on keyword: {keyword}")
+                return True, vip_level
+                
+        # 3. AI-Powered Context Analysis for Urgency
+        urgency_level = priority_content.get("urgency_level", "low")
+        if isinstance(urgency_level, str) and urgency_level.lower() == "high" and not is_vip:
             is_vip = True
             vip_level = "MEDIUM"
-            print(f"  -> Detected VIP (MEDIUM) based on keyword: {keyword}")
-            return True, vip_level
-            
-    # 3. AI-Powered Context Analysis for Urgency (can imply VIP status for general documents)
-    # This acts as a fallback or enhancement for urgency-based VIP detection
-    urgency_level = priority_content.get("urgency_level", "low").lower()
-    if urgency_level == "high" and not is_vip: # If not already marked VIP, and content is urgent
-        is_vip = True
-        vip_level = "MEDIUM" # Set to medium if only urgency triggers it
-        print(f"  -> Detected VIP (MEDIUM) based on high urgency content.")
+            print(f"-> Detected VIP (MEDIUM) based on high urgency content.")
 
-    return is_vip, vip_level
+        return is_vip, vip_level
+        
+    except Exception as e:
+        print(f"[!] Error in VIP determination: {e}")
+        return False, "NONE"
+
+def validate_message_structure(message: dict) -> tuple:
+    """Validate message structure and extract required fields safely"""
+    try:
+        if not isinstance(message, dict):
+            return False, "Message is not a dictionary", None, None, None, None, None, None
+        
+        # Extract required fields with defaults
+        filename = message.get('filename', 'unknown_file')
+        document_id = message.get('document_id', 'unknown_id')
+        sender = message.get('sender', '')
+        extracted_text = message.get('extracted_text', '')
+        priority_content = message.get('priority_content', {})
+        entities = message.get('entities', {})
+        summary = message.get('summary', 'No summary available.')
+        
+        # Validate that we have at least some text to work with
+        if not extracted_text or not extracted_text.strip():
+            return False, "No extracted text available", filename, document_id, sender, extracted_text, priority_content, entities
+        
+        return True, "Valid", filename, document_id, sender, extracted_text, priority_content, entities
+        
+    except Exception as e:
+        return False, f"Error validating message: {e}", None, None, None, None, None, None
 
 # --- MAIN AGENT LOGIC ---
-def main():
-    connection = None
-    while not connection:
-        try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-            print(' [*] Successfully connected to RabbitMQ.')
-        except pika.exceptions.AMQPConnectionError:
-            print(" [!] RabbitMQ not ready. Retrying in 5 seconds...")
-            time.sleep(5)
-
-    channel = connection.channel()
-
-    channel.queue_declare(queue=CONSUME_QUEUE_NAME, durable=True)
-    channel.queue_declare(queue=PUBLISH_QUEUE_NAME, durable=True)
-
-    print(' [*] Enhanced AI-Powered Classifier Agent waiting for messages. To exit press CTRL+C')
-
-    def callback(ch, method, properties, body):
-        """Fixed callback function with proper error handling"""
-        document_id = "unknown_id"  # Initialize at the start
-        filename = "unknown_file"   # Initialize at the start
-        
+def process_message(ch, method, properties, body):
+    """Process individual message with comprehensive error handling"""
+    document_id = "unknown_id"
+    filename = "unknown_file"
+    
+    try:
+        # Step 1: Parse JSON message
         try:
             message = json.loads(body)
-            filename = message['filename']
-            document_id = message.get('document_id', 'unknown_id')
-            sender = message.get('sender', '') # Get sender information
-            extracted_text = message.get('extracted_text', '')
-            priority_content = message.get('priority_content', {}) # Get priority content from Extractor
-            
-            print(f"\n [x] Received '{filename}' (Doc ID: {document_id}) for classification.")
-
-            # Determine VIP status and level
-            is_vip, vip_level = determine_vip_status(sender, extracted_text, priority_content)
-            if is_vip:
-                print(f"  -> Document identified as VIP with level: {vip_level}")
-            
-            # Perform enhanced document classification
-            classification_result = hybrid_classify(extracted_text)
-            doc_type = classification_result.get('doc_type', 'UNKNOWN')
-            confidence = classification_result.get('confidence_score', 0.0)
-            classification_method = classification_result.get('method', 'unknown')
-            
-            print(f"  -> Classification: {doc_type} (confidence: {confidence:.2f}, method: {classification_method})")
-
-            # Define valid document types
-            VALID_TYPES = ['REPORT', 'RESUME', 'MEMO', 'INVOICE', 'AGREEMENT', 'CONTRACT', 'GRIEVANCE', 'ID_PROOF']
-            
-            # Apply confidence thresholds and human review logic
-            if doc_type not in VALID_TYPES or doc_type in ['UNKNOWN', 'LLM_ERROR', 'HUMAN_REVIEW_NEEDED']:
-                print(f"  -> Document type '{doc_type}' requires human review.")
-                doc_type = "HUMAN_REVIEW_NEEDED"
-                confidence = 0.0
-            elif confidence < 0.75:  # Lower threshold for higher accuracy
-                print(f"  -> Confidence ({confidence:.2f}) is below threshold. Flagging for human review.")
-                doc_type = "HUMAN_REVIEW_NEEDED"
-                confidence = 0.0
-            elif is_vip and confidence < 0.85:  # Higher threshold for VIP documents
-                print(f"  -> VIP document confidence ({confidence:.2f}) is below VIP threshold. Flagging for human review.")
-                doc_type = "HUMAN_REVIEW_NEEDED"
-                confidence = 0.0
-
-            # Publish status update with VIP info
+        except json.JSONDecodeError as e:
+            print(f"[e] FAILED to parse JSON message: {e}")
+            print(f"[e] Raw message body: {body[:200]}...")  # Show first 200 chars
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)  # Don't requeue malformed JSON
+            return
+        
+        # Step 2: Validate message structure
+        is_valid, error_msg, filename, document_id, sender, extracted_text, priority_content, entities = validate_message_structure(message)
+        
+        if not is_valid:
+            print(f"[e] Invalid message structure for '{filename}' (Doc ID: {document_id}): {error_msg}")
             publish_status_update(
                 doc_id=document_id,
-                status="Classified",
-                doc_type=doc_type,
-                confidence=confidence,
-                is_vip=is_vip,
-                vip_level=vip_level
+                status="Classification Failed",
+                details={"error": f"Invalid message structure: {error_msg}"}
             )
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)  # Don't requeue invalid messages
+            return
 
-            # Prepare message for router with VIP info
-            router_message = {
-                'document_id': document_id,
-                'filename': filename,
-                'doc_type': doc_type,
-                'confidence': confidence,
-                'entities': message.get('entities', {}), # Keep existing entities
-                'summary': message.get('summary', 'No summary available.'), # Pass summary
-                'priority_content': priority_content, # Pass priority content
-                'is_vip': is_vip, # Pass VIP status
-                'vip_level': vip_level, # Pass VIP level
-                'classification_method': classification_method # Pass classification method used
-            }
-            
-            # Fixed: Create new connection for publishing
+        print(f"\n[x] Received '{filename}' (Doc ID: {document_id}) for classification.")
+
+        # Step 3: Determine VIP status
+        is_vip, vip_level = determine_vip_status(sender, extracted_text, priority_content)
+        if is_vip:
+            print(f"-> Document identified as VIP with level: {vip_level}")
+        
+        # Step 4: Perform classification
+        classification_result = hybrid_classify(extracted_text)
+        doc_type = classification_result.get('doc_type', 'UNKNOWN')
+        confidence = classification_result.get('confidence_score', 0.0)
+        classification_method = classification_result.get('method', 'unknown')
+        
+        print(f"-> Classification: {doc_type} (confidence: {confidence:.2f}, method: {classification_method})")
+
+        # Step 5: Apply confidence thresholds
+        VALID_TYPES = ['REPORT', 'RESUME', 'MEMO', 'INVOICE', 'AGREEMENT', 'CONTRACT', 'GRIEVANCE', 'ID_PROOF']
+        
+        if doc_type not in VALID_TYPES or doc_type in ['UNKNOWN', 'LLM_ERROR', 'HUMAN_REVIEW_NEEDED']:
+            print(f"-> Document type '{doc_type}' requires human review.")
+            doc_type = "HUMAN_REVIEW_NEEDED"
+            confidence = 0.0
+        elif confidence < 0.75:
+            print(f"-> Confidence ({confidence:.2f}) is below threshold. Flagging for human review.")
+            doc_type = "HUMAN_REVIEW_NEEDED"
+            confidence = 0.0
+        elif is_vip and confidence < 0.85:
+            print(f"-> VIP document confidence ({confidence:.2f}) is below VIP threshold. Flagging for human review.")
+            doc_type = "HUMAN_REVIEW_NEEDED"
+            confidence = 0.0
+
+        # Step 6: Publish status update
+        publish_status_update(
+            doc_id=document_id,
+            status="Classified",
+            doc_type=doc_type,
+            confidence=confidence,
+            is_vip=is_vip,
+            vip_level=vip_level
+        )
+
+        # Step 7: Prepare and send message to router
+        router_message = {
+            'document_id': document_id,
+            'filename': filename,
+            'doc_type': doc_type,
+            'confidence': confidence,
+            'entities': entities,
+            'summary': message.get('summary', 'No summary available.'),
+            'priority_content': priority_content,
+            'is_vip': is_vip,
+            'vip_level': vip_level,
+            'classification_method': classification_method
+        }
+        
+        # Step 8: Publish to router with retry logic
+        max_publish_retries = 3
+        publish_success = False
+        
+        for attempt in range(max_publish_retries):
             try:
-                publish_connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-                publish_channel = publish_connection.channel()
-                publish_channel.queue_declare(queue=PUBLISH_QUEUE_NAME, durable=True)
-                publish_channel.basic_publish(
+                connection = rabbitmq_manager.get_fresh_connection()
+                if not connection:
+                    raise Exception("Failed to get fresh connection for publishing")
+                
+                channel = connection.channel()
+                channel.queue_declare(queue=PUBLISH_QUEUE_NAME, durable=True)
+                channel.basic_publish(
                     exchange='', 
                     routing_key=PUBLISH_QUEUE_NAME, 
                     body=json.dumps(router_message),
-                    properties=pika.BasicProperties(delivery_mode=2)  # Make message persistent
+                    properties=pika.BasicProperties(delivery_mode=2)
                 )
-                publish_connection.close()
+                connection.close()
                 
-                print(f" [>] Sent '{filename}' (Type: {doc_type}, VIP: {is_vip}) for routing.")
+                print(f"[>] Sent '{filename}' (Type: {doc_type}, VIP: {is_vip}) for routing.")
+                publish_success = True
+                break
                 
-                # Acknowledge the message successfully processed
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                
-            except Exception as publish_error:
-                print(f" [e] Failed to publish to router: {publish_error}")
-                publish_status_update(
-                    doc_id=document_id,
-                    status="Classification Failed",
-                    details={"error": f"Failed to send to router: {str(publish_error)}"}
-                )
-                # Don't acknowledge if we can't publish
-                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            except Exception as pub_error:
+                print(f"[!] Publish attempt {attempt + 1} failed: {pub_error}")
+                if attempt < max_publish_retries - 1:
+                    time.sleep(1)  # Brief delay before retry
+                else:
+                    raise Exception(f"Failed to publish after {max_publish_retries} attempts: {pub_error}")
 
-        except json.JSONDecodeError as e:
-            print(f" [e] FAILED to parse JSON for message: {e}")
-            # Reject malformed messages permanently
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-            
-        except KeyError as e:
-            print(f" [e] FAILED to process '{filename}' - missing required field {e}")
-            publish_status_update(
-                doc_id=document_id, 
-                status="Classification Failed",
-                details={"error": f"Missing required field: {str(e)}"}
-            )
-            # Reject messages with missing required fields
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-            
-        except Exception as e:
-            print(f" [e] FAILED to process '{filename}': {e}")
-            publish_status_update(
-                doc_id=document_id, 
-                status="Classification Failed",
-                details={"error": str(e)}
-            )
-            # On general failure, requeue for retry
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        # Step 9: Acknowledge message
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        print(f"-> Successfully processed and acknowledged '{filename}'.")
 
-    # Set QoS to process one message at a time
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue=CONSUME_QUEUE_NAME, on_message_callback=callback)
+    except Exception as e:
+        print(f"[e] FAILED to process '{filename}': {e}")
+        print(f"[e] Error traceback: {traceback.format_exc()}")
+        
+        publish_status_update(
+            doc_id=document_id,
+            status="Classification Failed",
+            details={"error": str(e), "traceback": traceback.format_exc()}
+        )
+        
+        # Don't acknowledge failed messages - they'll be requeued
+        print(f"[!] Message not acknowledged - will be requeued for retry")
+
+def main():
+    """Main function with improved connection handling"""
+    connection = None
     
+    # Wait for RabbitMQ to be ready
+    while not connection:
+        try:
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST,
+                    heartbeat=600,
+                    blocked_connection_timeout=300,
+                )
+            )
+            print('[*] Successfully connected to RabbitMQ.')
+        except pika.exceptions.AMQPConnectionError:
+            print("[!] RabbitMQ not ready. Retrying in 5 seconds...")
+            time.sleep(5)
+
     try:
+        channel = connection.channel()
+        channel.queue_declare(queue=CONSUME_QUEUE_NAME, durable=True)
+        channel.queue_declare(queue=PUBLISH_QUEUE_NAME, durable=True)
+        channel.basic_qos(prefetch_count=1)  # Process one message at a time
+        
+        print('[*] Enhanced AI-Powered Classifier Agent waiting for messages. To exit press CTRL+C')
+
+        channel.basic_consume(queue=CONSUME_QUEUE_NAME, on_message_callback=process_message)
         channel.start_consuming()
+        
     except KeyboardInterrupt:
-        print(' [*] Stopping classifier...')
-        channel.stop_consuming()
-        connection.close()
+        print('[!] Interrupted by user')
+        if connection and connection.is_open:
+            channel.stop_consuming()
+            connection.close()
+    except Exception as e:
+        print(f"[!!!] Consumer error: {e}")
+        print(f"[!!!] Consumer error traceback: {traceback.format_exc()}")
+    finally:
+        if connection and connection.is_open:
+            connection.close()
 
 if __name__ == '__main__':
     try:
@@ -605,3 +706,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print('Interrupted')
         exit(0)
+    except Exception as e:
+        print(f"[!!!] Classifier Agent crashed: {e}")
+        print(f"[!!!] Crash traceback: {traceback.format_exc()}")
+        exit(1)

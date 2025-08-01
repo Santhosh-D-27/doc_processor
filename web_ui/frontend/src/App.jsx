@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProgressBar from './components/ProgressBar';
 import UploadPanel from './components/UploadPanel';
 import MailboxManager from './components/MailboxManager';
-import VIPDashboard from './components/VIPDashboard';
+
 
 const API_URL = 'http://127.0.0.1:8000';
 const WS_URL = 'ws://127.0.0.1:8000/ws';
@@ -252,10 +252,7 @@ function App() {
                     : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-500'
                 }`}
               >
-                <span>VIP Management</span>
-                <span className="bg-gray-700 text-gray-300 px-2 py-1 rounded-full text-xs">
-                  {documents.filter(doc => doc.is_vip).length}
-                </span>
+               
               </button>
             </nav>
           </div>
@@ -416,16 +413,7 @@ function App() {
           </motion.div>
         )}
 
-        {/* VIP Dashboard Tab */}
-        {activeTab === 'vip' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <VIPDashboard documents={documents} />
-          </motion.div>
-        )}
+       
       </main>
     </div>
   );

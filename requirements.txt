@@ -14,3 +14,4 @@ python-dotenv
 sqlalchemy
 websockets
 python-docx
+https://github.com/oschwartz10612/poppler-windows/releases
