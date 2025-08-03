@@ -5,11 +5,11 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProgressBar from './components/ProgressBar';
 import UploadPanel from './components/UploadPanel';
-import MailboxManager from './components/MailboxManager';
 
 
 const API_URL = 'http://127.0.0.1:8000';
 const WS_URL = 'ws://127.0.0.1:8000/ws';
+const OAUTH_MANAGER_URL = 'http://127.0.0.1:8001';
 
 function App() {
   const [documents, setDocuments] = useState([]);
@@ -18,6 +18,11 @@ function App() {
   const [expandedRow, setExpandedRow] = useState(null);
   const [activeTab, setActiveTab] = useState('documents');
   const [wsConnected, setWsConnected] = useState(false);
+  const [oauthStatus, setOauthStatus] = useState({
+    connected_count: 0,
+    mailboxes: [],
+    ingestor_service_status: 'disconnected'
+  });
 
   const handleRowClick = async (docId) => {
     if (expandedRow && expandedRow.id === docId) {
@@ -46,6 +51,39 @@ function App() {
     }
   };
 
+  const fetchOAuthStatus = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/oauth-status`);
+      setOauthStatus(response.data || {
+        connected_count: 0,
+        mailboxes: [],
+        ingestor_service_status: 'disconnected'
+      });
+    } catch (err) {
+      console.error("Failed to fetch OAuth status:", err);
+      setOauthStatus({
+        connected_count: 0,
+        mailboxes: [],
+        ingestor_service_status: 'error'
+      });
+    }
+  };
+
+  const handleOAuthAction = () => {
+    // Open OAuth manager in new window
+    window.open(OAUTH_MANAGER_URL, '_blank', 'width=800,height=600');
+    
+    // Set up interval to check for updates while window is open
+    const checkInterval = setInterval(() => {
+      fetchOAuthStatus();
+    }, 2000);
+    
+    // Clear interval after 2 minutes
+    setTimeout(() => {
+      clearInterval(checkInterval);
+    }, 120000);
+  };
+
   useEffect(() => {
     const fetchInitialDocuments = async () => {
       try {
@@ -62,6 +100,7 @@ function App() {
     };
 
     fetchInitialDocuments();
+    fetchOAuthStatus();
 
     // WebSocket connection with reconnection logic
     let ws;
@@ -140,12 +179,18 @@ function App() {
 
     connectWebSocket();
 
+    // Refresh OAuth status every 30 seconds
+    const oauthInterval = setInterval(fetchOAuthStatus, 30000);
+
     return () => {
       if (ws) {
         ws.close();
       }
       if (reconnectInterval) {
         clearInterval(reconnectInterval);
+      }
+      if (oauthInterval) {
+        clearInterval(oauthInterval);
       }
     };
   }, []);
@@ -176,6 +221,34 @@ function App() {
     );
   };
 
+  const getOAuthStatusColor = () => {
+    if (oauthStatus.ingestor_service_status === 'connected' && oauthStatus.connected_count > 0) {
+      return 'text-green-400';
+    } else if (oauthStatus.ingestor_service_status === 'connected' && oauthStatus.connected_count === 0) {
+      return 'text-yellow-400';
+    } else {
+      return 'text-red-400';
+    }
+  };
+
+  const getOAuthStatusDot = () => {
+    if (oauthStatus.ingestor_service_status === 'connected' && oauthStatus.connected_count > 0) {
+      return 'bg-green-500';
+    } else if (oauthStatus.ingestor_service_status === 'connected' && oauthStatus.connected_count === 0) {
+      return 'bg-yellow-500';
+    } else {
+      return 'bg-red-500';
+    }
+  };
+
+  const getOAuthButtonText = () => {
+    if (oauthStatus.connected_count > 0) {
+      return '⚙️ Manage OAuth Connections';
+    } else {
+      return '🔗 Connect Mailbox';
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen p-4 sm:p-8 bg-gray-900 text-gray-100 flex items-center justify-center">
@@ -199,11 +272,24 @@ function App() {
           Document Processing Dashboard
         </motion.h1>
         
-        {/* Connection Status Indicator */}
-        <div className="mt-4 flex items-center justify-center space-x-4">
+        {/* Connection Status Indicators */}
+        <div className="mt-4 flex items-center justify-center space-x-6">
           <div className={`flex items-center space-x-2 ${wsConnected ? 'text-green-400' : 'text-red-400'}`}>
             <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
             <span className="text-sm">WebSocket {wsConnected ? 'Connected' : 'Disconnected'}</span>
+          </div>
+          
+          <div className={`flex items-center space-x-2 ${getOAuthStatusColor()}`}>
+            <div className={`w-2 h-2 rounded-full ${getOAuthStatusDot()}`}></div>
+            <span className="text-sm">
+              Gmail: {oauthStatus.connected_count} connected
+              {oauthStatus.connected_count > 0 && ` (${oauthStatus.mailboxes.map(m => m.email.split('@')[0]).join(', ')})`}
+            </span>
+          </div>
+          
+          <div className={`flex items-center space-x-2 ${oauthStatus.ingestor_service_status === 'connected' ? 'text-blue-400' : 'text-red-400'}`}>
+            <div className={`w-2 h-2 rounded-full ${oauthStatus.ingestor_service_status === 'connected' ? 'bg-blue-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm">Ingestor {oauthStatus.ingestor_service_status}</span>
           </div>
         </div>
       </header>
@@ -218,13 +304,66 @@ function App() {
           <UploadPanel />
         </motion.div>
 
+        {/* OAuth Status Panel */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
           className="mb-10"
         >
-          <MailboxManager />
+          <div className="bg-gray-400/10 backdrop-blur-md rounded-xl shadow-lg border border-gray-200/10 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-200">Gmail Integration</h3>
+              <button 
+                onClick={handleOAuthAction}
+                className={`px-4 py-2 font-bold rounded-lg transition-colors ${
+                  oauthStatus.ingestor_service_status === 'connected' 
+                    ? 'bg-blue-600 hover:bg-blue-500 text-white' 
+                    : 'bg-gray-600 hover:bg-gray-500 text-gray-300'
+                }`}
+                disabled={oauthStatus.ingestor_service_status !== 'connected'}
+                title={oauthStatus.ingestor_service_status !== 'connected' ? 'Ingestor service not available' : ''}
+              >
+                {getOAuthButtonText()}
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {oauthStatus.connected_count > 0 ? (
+                oauthStatus.mailboxes.map((mailbox, index) => (
+                  <div key={index} className="flex justify-between items-center bg-gray-900/50 p-3 rounded-lg">
+                    <div>
+                      <p className="font-semibold text-gray-200">{mailbox.email}</p>
+                      <p className="text-sm text-gray-400">
+                        Connected: {new Date(mailbox.connected_at).toLocaleString()}
+                      </p>
+                      {mailbox.expires_at && (
+                        <p className="text-xs text-gray-500">
+                          Token expires: {new Date(mailbox.expires_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-green-400 text-sm font-semibold">
+                      ✓ Active
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-400 mb-3">
+                    {oauthStatus.ingestor_service_status === 'connected' 
+                      ? "No Gmail accounts connected." 
+                      : "Ingestor service unavailable."}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {oauthStatus.ingestor_service_status === 'connected' 
+                      ? "Click 'Connect Mailbox' to add your Gmail accounts." 
+                      : "Please ensure the ingestor service is running on port 8001."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
 
         {/* Tab Navigation */}
@@ -243,16 +382,6 @@ function App() {
                 <span className="bg-gray-700 text-gray-300 px-2 py-1 rounded-full text-xs">
                   {documents.length}
                 </span>
-              </button>
-              <button
-                onClick={() => setActiveTab('vip')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors ${
-                  activeTab === 'vip'
-                    ? 'border-yellow-500 text-yellow-400'
-                    : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-500'
-                }`}
-              >
-               
               </button>
             </nav>
           </div>
@@ -313,7 +442,7 @@ function App() {
                               </svg>
                             </div>
                             <p className="text-lg">No documents processed yet</p>
-                            <p className="text-sm">Upload a document to get started!</p>
+                            <p className="text-sm">Upload a document or connect your Gmail accounts!</p>
                           </div>
                         </td>
                       </motion.tr>

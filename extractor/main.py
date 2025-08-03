@@ -1,10 +1,20 @@
-# extractor/main.py - Improved version with better connection management
+# extractor/main.py - Priority-Aware Multi-Threaded Document Extractor
+
 import time
 import pika
 import json
 import base64
 import pytesseract
 import os
+import threading
+import queue
+import logging
+import signal
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import Dict, Optional
+from enum import IntEnum
 import google.generativeai as genai
 from pdf2image import convert_from_bytes
 from PIL import Image
@@ -12,406 +22,467 @@ import io
 from datetime import datetime, UTC
 from dotenv import load_dotenv
 import docx
-import traceback
+import groq
 
 load_dotenv()
 
-# --- ROBUST TESSERACT CONFIGURATION ---
+# Priority Configuration
+class Priority(IntEnum):
+    CRITICAL = 100
+    HIGH = 80
+    MEDIUM = 50
+    LOW = 20
+    BULK = 10
+
+PRIORITY_QUEUES = {
+    Priority.CRITICAL: 'doc_received_critical',
+    Priority.HIGH: 'doc_received_high',
+    Priority.MEDIUM: 'doc_received_medium',
+    Priority.LOW: 'doc_received_low',
+    Priority.BULK: 'doc_received_bulk'
+}
+
+PRIORITY_THREAD_ALLOCATION = {
+    Priority.CRITICAL: 4, Priority.HIGH: 3, Priority.MEDIUM: 2, Priority.LOW: 1, Priority.BULK: 1
+}
+
+# Configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.getLogger("pika").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
+
+RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', '127.0.0.1')
+CLASSIFICATION_QUEUE = 'classification_queue'
+STATUS_QUEUE_NAME = 'document_status_queue'
+MAX_WORKERS = int(os.getenv('EXTRACTOR_MAX_WORKERS', '11'))
+PREFETCH_COUNT = int(os.getenv('EXTRACTOR_PREFETCH_COUNT', '1'))
+MAX_TEXT_LENGTH = int(os.getenv('MAX_TEXT_LENGTH', '50000'))
+
+# Initialize OCR
 tesseract_path = os.getenv("TESSERACT_CMD_PATH")
 if tesseract_path and os.path.exists(tesseract_path):
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
-    print("[i] Tesseract path configured from .env file.")
-else:
-    print("[!!!] WARNING: TESSERACT_CMD_PATH not found or invalid. OCR will likely fail on Windows.")
 
-# --- CONFIGURATION ---
-RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', '127.0.0.1')
-CONSUME_QUEUE_NAME = 'doc_received_queue'
-PUBLISH_QUEUE_NAME = 'classification_queue'
-STATUS_QUEUE_NAME = 'document_status_queue'
+# Initialize LLM clients
+groq_client = None
+gemini_model = None
 
-# Configure Gemini
+try:
+    groq_client = groq.Groq(api_key=os.environ["GROQ_API_KEY"])
+    logger.info("Groq client initialized (Primary)")
+except Exception:
+    pass
+
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
-    print("[i] Google Gemini client initialized for Extractor.")
-except Exception as e:
-    print(f"[e] Extractor's Gemini client failed to initialize: {e}")
-    model = None
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    logger.info("Gemini client initialized (Fallback)")
+except Exception:
+    pass
 
-# --- IMPROVED CONNECTION MANAGEMENT ---
-class RabbitMQManager:
-    def __init__(self, host):
+if not groq_client and not gemini_model:
+    logger.warning("No LLM clients available - analysis will be limited")
+
+# Data Classes
+@dataclass
+class ProcessingTask:
+    message: dict
+    priority: int
+    document_id: str
+    filename: str
+    delivery_tag: int
+    channel: object
+
+@dataclass
+class ExtractionResult:
+    success: bool
+    document_id: str
+    filename: str
+    extracted_text: str = ""
+    summary: str = ""
+    priority_content: dict = None
+    error: str = ""
+    processing_time: float = 0.0
+
+# Connection Management
+class SimpleConnectionManager:
+    def __init__(self, host: str):
         self.host = host
-        self.publish_connection = None
-        self.publish_channel = None
-        
-    def get_fresh_connection(self):
-        """Get a fresh connection for one-time operations like status updates"""
-        try:
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=self.host,
-                    heartbeat=600,  # 10 minutes
-                    blocked_connection_timeout=300,  # 5 minutes
-                )
-            )
-            return connection
-        except Exception as e:
-            print(f"[!] Failed to create fresh connection: {e}")
-            return None
+        self._lock = threading.Lock()
     
-    def get_publish_channel(self):
-        """Get or create a publishing channel with better error handling"""
-        # Check if current channel is healthy
-        if (self.publish_channel and 
-            hasattr(self.publish_channel, 'is_open') and 
-            self.publish_channel.is_open and
-            self.publish_connection and 
-            hasattr(self.publish_connection, 'is_open') and
-            self.publish_connection.is_open):
-            return self.publish_channel
-        
-        # Clean up old connections
-        self.cleanup_publish_connection()
-        
-        # Create new connection
+    def get_connection(self):
         try:
-            self.publish_connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=self.host,
-                    heartbeat=600,
-                    blocked_connection_timeout=300,
-                )
-            )
-            self.publish_channel = self.publish_connection.channel()
-            self.publish_channel.queue_declare(queue=PUBLISH_QUEUE_NAME, durable=True)
-            print("[i] Established new RabbitMQ publishing channel.")
-            return self.publish_channel
+            return pika.BlockingConnection(pika.ConnectionParameters(host=self.host, heartbeat=600))
         except Exception as e:
-            print(f"[!!!] ERROR: Could not establish RabbitMQ publishing connection: {e}")
+            logger.error(f"Connection failed: {e}")
             return None
-    
-    def cleanup_publish_connection(self):
-        """Safely cleanup publishing connections"""
-        if self.publish_channel:
-            try:
-                if hasattr(self.publish_channel, 'is_open') and self.publish_channel.is_open:
-                    self.publish_channel.close()
-            except Exception as e:
-                print(f"[!] Error closing publish channel: {e}")
-            finally:
-                self.publish_channel = None
-        
-        if self.publish_connection:
-            try:
-                if hasattr(self.publish_connection, 'is_open') and self.publish_connection.is_open:
-                    self.publish_connection.close()
-            except Exception as e:
-                print(f"[!] Error closing publish connection: {e}")
-            finally:
-                self.publish_connection = None
 
-# Global RabbitMQ manager
-rabbitmq_manager = RabbitMQManager(RABBITMQ_HOST)
+connection_manager = SimpleConnectionManager(RABBITMQ_HOST)
 
-# --- HELPER & CORE FUNCTIONS ---
-def publish_status_update(doc_id: str, status: str, details: dict = None, doc_type: str = None, confidence: float = None):
-    """Publish status update with improved error handling"""
-    if details is None: 
+# Core Functions
+def publish_status_update(doc_id: str, status: str, details: dict = None, priority_score: int = None, priority_reason: str = None):
+    if details is None:
         details = {}
+    if priority_score is not None:
+        details['priority_score'] = priority_score
+    if priority_reason is not None:
+        details['priority_reason'] = priority_reason
     
-    status_message = {
-        "document_id": doc_id, 
-        "status": status, 
-        "timestamp": datetime.now(UTC).isoformat(),
-        "details": details, 
-        "doc_type": doc_type, 
-        "confidence": confidence
+    message = {
+        "document_id": doc_id, "status": status, "timestamp": datetime.now(UTC).isoformat(), "details": details
     }
     
-    connection = None
-    try:
-        # Use fresh connection for status updates
-        connection = rabbitmq_manager.get_fresh_connection()
-        if not connection:
-            raise Exception("Failed to get fresh connection for status update")
-            
-        channel = connection.channel()
-        channel.queue_declare(queue=STATUS_QUEUE_NAME, durable=True)
-        channel.basic_publish(
-            exchange='', 
-            routing_key=STATUS_QUEUE_NAME, 
-            body=json.dumps(status_message),
-            properties=pika.BasicProperties(delivery_mode=2)
-        )
-        print(f"[->] Status update published for Doc ID {doc_id}: {status}")
-        
-    except Exception as e:
-        print(f"[!!!] WARNING: Failed to publish status update for {doc_id}: {e}")
-        print(f"[!!!] Status error traceback: {traceback.format_exc()}")
-    finally:
-        if connection:
-            try:
-                connection.close()
-            except Exception as e:
-                print(f"[!] Error closing status connection: {e}")
+    connection = connection_manager.get_connection()
+    if connection:
+        try:
+            channel = connection.channel()
+            channel.queue_declare(queue=STATUS_QUEUE_NAME, durable=True)
+            channel.basic_publish(exchange='', routing_key=STATUS_QUEUE_NAME, body=json.dumps(message))
+            connection.close()
+        except Exception:
+            pass
 
 def extract_text_from_document(content_bytes: bytes, content_type: str, filename: str) -> str:
-    """Extract text from document with better error handling"""
-    text = ""
+    if not content_bytes:
+        raise ValueError("Empty document content")
+    
     file_extension = os.path.splitext(filename)[1].lower()
     
-    try:
-        if 'pdf' in content_type:
-            poppler_path = os.getenv("POPPLER_PATH")
-            if poppler_path and os.path.exists(poppler_path):
-                images = convert_from_bytes(content_bytes, poppler_path=poppler_path)
-            else:
-                images = convert_from_bytes(content_bytes)
-            for i, image in enumerate(images):
-                text += pytesseract.image_to_string(image) + '\n'
-                
-        elif 'image' in content_type:
-            image = Image.open(io.BytesIO(content_bytes))
-            text = pytesseract.image_to_string(image)
+    if 'pdf' in content_type or file_extension == '.pdf':
+        poppler_path = os.getenv("POPPLER_PATH")
+        convert_kwargs = {'poppler_path': poppler_path} if poppler_path and os.path.exists(poppler_path) else {}
+        images = convert_from_bytes(content_bytes, **convert_kwargs)
+        text_parts = [pytesseract.image_to_string(image, config='--psm 6') for image in images]
+        text = '\n'.join(text_parts)
             
-        elif 'vnd.openxmlformats-officedocument.wordprocessingml.document' in content_type or file_extension == '.docx':
-            doc = docx.Document(io.BytesIO(content_bytes))
-            full_text = [para.text for para in doc.paragraphs]
-            text = '\n'.join(full_text)
-            
-        elif 'text' in content_type:
-            text = content_bytes.decode('utf-8', errors='ignore')
-            
-        else:
-            print(f"-> Unsupported content type: {content_type}. Attempting generic text decode.")
-            text = content_bytes.decode('utf-8', errors='ignore')
+    elif 'image' in content_type or file_extension in ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']:
+        image = Image.open(io.BytesIO(content_bytes))
+        text = pytesseract.image_to_string(image, config='--psm 6')
         
-        print(f"-> Successfully extracted {len(text)} characters.")
-        return text
+    elif 'vnd.openxmlformats-officedocument.wordprocessingml.document' in content_type or file_extension == '.docx':
+        doc = docx.Document(io.BytesIO(content_bytes))
+        text_parts = [para.text for para in doc.paragraphs if para.text.strip()]
+        text = '\n'.join(text_parts)
         
-    except Exception as e:
-        print(f"-> Error during text extraction: {e}")
-        raise Exception(f"Text extraction failed: {e}")
-
-def analyze_document_content_with_llm(text: str) -> dict:
-    """Analyze document content with LLM"""
-    if not model: 
-        print("-> Gemini client not available. Skipping LLM analysis.")
-        return {
-            "cleaned_text": text, 
-            "summary": "Gemini client not available.", 
-            "priority_content": {"error": "Gemini client not available."}
-        }
-        
-    if len(text.strip()) < 10:
-        print("-> Text too short for LLM processing, skipping.")
-        return {
-            "cleaned_text": text, 
-            "summary": "Text too short for summarization.", 
-            "priority_content": {}
-        }
-    
-    print("-> Sending text to Gemini for cleanup, summarization, and entity extraction...")
-    try:
-        prompt = f"""
-        Analyze the following text extracted from a document.
-        1. Clean up any OCR errors, fix formatting, and return the corrected text.
-        2. Generate a concise 2-3 sentence summary of the document's content.
-        3. Extract key priority content from the text. The entities to extract are:
-            - "deadlines": Critical deadlines and dates (e.g., "Payment due: June 1st, 2024")
-            - "key_parties": Important people or companies involved (e.g., "Acme Corp (vendor)", "Client Corp (customer)")
-            - "financial_commitments": Financial amounts and commitments (e.g., "Total amount: $1,250.75", "$50,000 budget approval")
-            - "action_items": Specific actions required (e.g., "Process payment", "Requires signature")
-            - "urgency_level": Classify the overall urgency as "high", "medium", or "low" based on the content (e.g., presence of "urgent", short deadlines).
-
-        4. Return the result as a single, valid JSON object with the following keys:
-            - "cleaned_text": The corrected and formatted text.
-            - "summary": The 2-3 sentence summary.
-            - "priority_content": A JSON object containing the extracted priority content. If a category is not found, its value should be an empty list or "N/A" for urgency_level.
-
-        Example output format:
-        {{
-          "cleaned_text": "The corrected and formatted text goes here...",
-          "summary": "This is a concise summary of the document in 2-3 sentences.",
-          "priority_content": {{
-            "deadlines": ["Payment due: June 1st, 2024"],
-            "key_parties": ["Acme Corp (vendor)", "Client Corp (customer)"],
-            "financial_commitments": ["Total amount: $1,250.75"],
-            "action_items": ["Process payment", "Update accounting records"],
-            "urgency_level": "medium"
-          }}
-        }}
-
-        Here is the text to process:
-        ---
-        {text}
-        ---
-        """
-        
-        response = model.generate_content(prompt)
-        json_response_text = response.text.strip().replace('```json', '').replace('```', '')
-        result = json.loads(json_response_text)
-        print("-> Successfully processed text with Gemini.")
-        return result
-        
-    except Exception as e:
-        print(f"-> Gemini Error: {e}")
-        return {
-            "cleaned_text": text, 
-            "summary": f"LLM summarization failed: {e}", 
-            "priority_content": {"error": f"LLM processing failed: {e}"}
-        }
-
-# --- MAIN AGENT LOGIC ---
-def process_message(ch, method, properties, body):
-    """Process individual message with comprehensive error handling"""
-    message = None
-    document_id = 'unknown_id'
-    filename = 'unknown_file'
-    
-    try:
-        message = json.loads(body)
-        filename = message['filename']
-        document_id = message.get('document_id', 'unknown_id')
-        sender = message.get('sender', 'N/A') 
-        content_type = message.get('content_type', 'application/octet-stream')
-
-        print(f"\n[x] Received '{filename}' (Doc ID: {document_id}) for extraction.")
-
-        # Step 1: Extract text
-        file_content_bytes = base64.b64decode(message['file_content'])
-        raw_text = extract_text_from_document(file_content_bytes, content_type, filename)
-        
-        # Step 2: Process with LLM
-        processed_data = analyze_document_content_with_llm(raw_text)
-        
-        # Check if LLM analysis failed
-        if ("error" in processed_data.get("priority_content", {}) and 
-            processed_data["priority_content"]["error"].startswith("LLM processing failed")):
-            raise Exception(f"LLM analysis failed: {processed_data['priority_content']['error']}")
-
-        # Step 3: Prepare message for classifier
-        classifier_message = {
-            'document_id': document_id,
-            'filename': filename,
-            'context': message.get('context', ''),
-            'extracted_text': processed_data.get('cleaned_text', raw_text),
-            'summary': processed_data.get('summary', 'No summary available.'),
-            'priority_content': processed_data.get('priority_content', {}),
-            'entities': processed_data.get('entities', {}),
-            'sender': sender
-        }
-        
-        # Step 4: Publish to classifier with retry logic
-        max_publish_retries = 3
-        publish_success = False
-        
-        for attempt in range(max_publish_retries):
+    elif 'text' in content_type or file_extension in ['.txt', '.csv']:
+        for encoding in ['utf-8', 'utf-16', 'latin-1', 'cp1252']:
             try:
-                pub_channel = rabbitmq_manager.get_publish_channel()
-                if not pub_channel:
-                    raise Exception("Failed to get publishing channel")
-
-                pub_channel.basic_publish(
-                    exchange='', 
-                    routing_key=PUBLISH_QUEUE_NAME, 
-                    body=json.dumps(classifier_message),
-                    properties=pika.BasicProperties(delivery_mode=2)
-                )
-                
-                print(f"[>] Sent cleaned text, summary, and entities from '{filename}' for classification.")
-                publish_success = True
+                text = content_bytes.decode(encoding)
                 break
-                
-            except Exception as pub_error:
-                print(f"[!] Publish attempt {attempt + 1} failed: {pub_error}")
-                if attempt < max_publish_retries - 1:
-                    rabbitmq_manager.cleanup_publish_connection()
-                    time.sleep(1)  # Brief delay before retry
-                else:
-                    raise Exception(f"Failed to publish after {max_publish_retries} attempts: {pub_error}")
-
-        # Step 5: Update status
-        publish_status_update(
-            doc_id=document_id,
-            status="Extracted",
-            details={
-                "chars_extracted": len(raw_text),
-                "extracted_text": processed_data.get('cleaned_text', raw_text),
-                "summary": processed_data.get('summary', 'No summary available.'),
-                "priority_content": processed_data.get('priority_content', {}),
-                "entities": processed_data.get('entities', {})
-            }
-        )
-
-        # Step 6: Acknowledge message
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        print(f"-> Successfully processed and acknowledged '{filename}'.")
-
-    except Exception as e:
-        print(f"[e] FAILED to process '{filename}': {e}")
-        print(f"[e] Error traceback: {traceback.format_exc()}")
-        
-        # Publish failure status
-        publish_status_update(
-            doc_id=document_id, 
-            status="Extraction Failed", 
-            details={"error": str(e), "traceback": traceback.format_exc()}
-        )
-        
-        # Don't acknowledge failed messages - they'll be requeued
-        print(f"[!] Message not acknowledged - will be requeued for retry")
-
-def main():
-    """Main function with improved connection handling"""
-    connection = None
+            except UnicodeDecodeError:
+                continue
+        else:
+            text = content_bytes.decode('utf-8', errors='ignore')
+    else:
+        text = content_bytes.decode('utf-8', errors='ignore')
     
-    # Wait for RabbitMQ to be ready
-    while not connection:
+    text = text.strip()
+    if len(text) < 10:
+        raise ValueError(f"Extracted text too short: {len(text)} characters")
+    
+    return text
+
+def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> dict:
+    if not groq_client and not gemini_model:
+        return {"cleaned_text": text, "summary": "LLM analysis unavailable", "priority_content": {"urgency_level": "low"}}
+    
+    if len(text.strip()) < 10:
+        return {"cleaned_text": text, "summary": "Document too short for analysis", "priority_content": {"urgency_level": "low"}}
+    
+    processing_text = text[:MAX_TEXT_LENGTH]
+    if len(text) > MAX_TEXT_LENGTH:
+        processing_text += "\n[... text truncated ...]"
+    
+    urgency_context = ""
+    if priority_score >= Priority.CRITICAL:
+        urgency_context = "This is a CRITICAL priority document. Pay special attention to urgent deadlines."
+    elif priority_score >= Priority.HIGH:
+        urgency_context = "This is a HIGH priority document. Focus on important deadlines."
+    
+    prompt = f"""
+    {urgency_context}
+    
+    Analyze this document and provide JSON with:
+    1. Cleaned text (fix OCR errors)
+    2. 2-3 sentence summary
+    3. Extract: deadlines, key_parties, financial_commitments, action_items, urgency_level
+    
+    Return as valid JSON:
+    {{
+      "cleaned_text": "corrected text",
+      "summary": "brief summary",
+      "priority_content": {{
+        "deadlines": ["list"], "key_parties": ["list"], "financial_commitments": ["list"],
+        "action_items": ["list"], "urgency_level": "high/medium/low"
+      }}
+    }}
+    
+    Document: {processing_text}
+    """
+    
+    # Try Groq first
+    if groq_client:
         try:
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=RABBITMQ_HOST,
-                    heartbeat=600,
-                    blocked_connection_timeout=300,
-                )
+            response = groq_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama-3.1-8b-instant", temperature=0.1, max_tokens=2048
             )
-            print('[*] Successfully connected to RabbitMQ (Consumer).')
-        except pika.exceptions.AMQPConnectionError:
-            print("[!] RabbitMQ (Consumer) not ready. Retrying in 5 seconds...")
-            time.sleep(5)
+            json_text = response.choices[0].message.content.strip().lstrip('```json').rstrip('```').strip()
+            
+            if '{' in json_text and '}' in json_text:
+                start, end = json_text.find('{'), json_text.rfind('}') + 1
+                json_text = json_text[start:end]
+            
+            result = json.loads(json_text)
+            
+            # Ensure required structure
+            if all(key in result for key in ['cleaned_text', 'summary', 'priority_content']):
+                priority_content = result.get('priority_content', {})
+                defaults = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
+                for field, default in defaults.items():
+                    if field not in priority_content:
+                        priority_content[field] = default
+                return result
+        except Exception:
+            pass
+    
+    # Fallback to Gemini
+    if gemini_model:
+        try:
+            response = gemini_model.generate_content(prompt)
+            json_text = response.text.strip().lstrip('```json').rstrip('```').strip()
+            result = json.loads(json_text)
+            
+            if all(key in result for key in ['cleaned_text', 'summary', 'priority_content']):
+                priority_content = result.get('priority_content', {})
+                defaults = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
+                for field, default in defaults.items():
+                    if field not in priority_content:
+                        priority_content[field] = default
+                return result
+        except Exception:
+            pass
+    
+    return {"cleaned_text": text, "summary": "LLM analysis failed", "priority_content": {"urgency_level": "low"}}
 
+# Processing Engine
+class PriorityProcessor:
+    def __init__(self):
+        self.stats = {'total_processed': 0, 'errors': 0}
+        self.stats_lock = threading.Lock()
+    
+    def process_document(self, task: ProcessingTask) -> ExtractionResult:
+        start_time = time.time()
+        
+        try:
+            message = task.message
+            priority_score = message.get('priority_score', Priority.LOW)
+            
+            file_content_bytes = base64.b64decode(message['file_content'])
+            content_type = message.get('content_type', 'application/octet-stream')
+            
+            raw_text = extract_text_from_document(file_content_bytes, content_type, task.filename)
+            processed_data = analyze_document_content_with_llm(raw_text, priority_score)
+            
+            processing_time = time.time() - start_time
+            
+            with self.stats_lock:
+                self.stats['total_processed'] += 1
+            
+            return ExtractionResult(
+                success=True, document_id=task.document_id, filename=task.filename,
+                extracted_text=processed_data.get('cleaned_text', raw_text),
+                summary=processed_data.get('summary', 'No summary available'),
+                priority_content=processed_data.get('priority_content', {}),
+                processing_time=processing_time
+            )
+            
+        except Exception as e:
+            processing_time = time.time() - start_time
+            
+            with self.stats_lock:
+                self.stats['errors'] += 1
+            
+            return ExtractionResult(
+                success=False, document_id=task.document_id, filename=task.filename,
+                error=str(e), processing_time=processing_time
+            )
+
+# Queue Consumer
+class PriorityQueueConsumer:
+    def __init__(self, priority: Priority, thread_count: int, processor: PriorityProcessor):
+        self.priority = priority
+        self.queue_name = PRIORITY_QUEUES[priority]
+        self.processor = processor
+        self.executor = ThreadPoolExecutor(max_workers=thread_count, thread_name_prefix=f"P{priority.value}")
+        self.connection = None
+        self.channel = None
+        self.is_running = False
+    
+    def connect(self):
+        try:
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=600))
+            self.channel = self.connection.channel()
+            self.channel.queue_declare(queue=self.queue_name, durable=True)
+            self.channel.queue_declare(queue=CLASSIFICATION_QUEUE, durable=True)
+            self.channel.basic_qos(prefetch_count=PREFETCH_COUNT)
+            logger.info(f"Connected to {self.queue_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Connection failed for {self.queue_name}: {e}")
+            return False
+    
+    def process_message_callback(self, ch, method, properties, body):
+        try:
+            message = json.loads(body)
+            task = ProcessingTask(
+                message=message, priority=self.priority.value,
+                document_id=message.get('document_id', 'unknown'),
+                filename=message.get('filename', 'unknown'),
+                delivery_tag=method.delivery_tag, channel=ch
+            )
+            self.executor.submit(self.process_task, task)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+        except Exception:
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+    
+    def process_task(self, task: ProcessingTask):
+        try:
+            result = self.processor.process_document(task)
+            
+            if result.success:
+                classifier_message = {
+                    'document_id': result.document_id, 'filename': result.filename,
+                    'extracted_text': result.extracted_text, 'summary': result.summary,
+                    'priority_content': result.priority_content, 'entities': {},
+                    'sender': task.message.get('sender', 'N/A'),
+                    'priority_score': task.message.get('priority_score', Priority.LOW),
+                    'priority_reason': task.message.get('priority_reason', 'Unknown')
+                }
+                self.send_to_classifier(classifier_message)
+                publish_status_update(
+                    doc_id=result.document_id, status="Extracted",
+                    details={"chars_extracted": len(result.extracted_text), "processing_time": result.processing_time},
+                    priority_score=task.message.get('priority_score'),
+                    priority_reason=task.message.get('priority_reason')
+                )
+            else:
+                publish_status_update(
+                    doc_id=result.document_id, status="Extraction Failed",
+                    details={"error": result.error},
+                    priority_score=task.message.get('priority_score'),
+                    priority_reason=task.message.get('priority_reason')
+                )
+        except Exception as e:
+            logger.error(f"Task processing error {task.document_id}: {e}")
+    
+    def send_to_classifier(self, message: dict):
+        connection = connection_manager.get_connection()
+        if connection:
+            try:
+                channel = connection.channel()
+                channel.queue_declare(queue=CLASSIFICATION_QUEUE, durable=True)
+                channel.basic_publish(exchange='', routing_key=CLASSIFICATION_QUEUE, body=json.dumps(message))
+                connection.close()
+            except Exception:
+                pass
+    
+    def start_consuming(self):
+        if not self.connect():
+            return False
+        
+        self.is_running = True
+        try:
+            self.channel.basic_consume(queue=self.queue_name, on_message_callback=self.process_message_callback)
+            self.channel.start_consuming()
+        except KeyboardInterrupt:
+            self.stop()
+        except Exception as e:
+            logger.error(f"Consumer error for {self.queue_name}: {e}")
+        finally:
+            self.cleanup()
+        return True
+    
+    def stop(self):
+        self.is_running = False
+        if self.channel and hasattr(self.channel, 'stop_consuming'):
+            self.channel.stop_consuming()
+        self.executor.shutdown(wait=True, timeout=30)
+    
+    def cleanup(self):
+        if self.connection and hasattr(self.connection, 'is_open') and self.connection.is_open:
+            try:
+                self.connection.close()
+            except Exception:
+                pass
+
+# Main Service
+class PriorityExtractionService:
+    def __init__(self):
+        self.processor = PriorityProcessor()
+        self.consumers = {}
+        self.consumer_threads = {}
+        self.is_running = False
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+    
+    def signal_handler(self, signum, frame):
+        logger.info(f"Received signal {signum}. Shutting down...")
+        self.stop()
+        sys.exit(0)
+    
+    def start(self):
+        total_threads = sum(PRIORITY_THREAD_ALLOCATION.values())
+        model_name = "Groq+Gemini" if groq_client and gemini_model else ("Groq" if groq_client else ("Gemini" if gemini_model else "No Models"))
+        logger.info(f"Starting Extraction Service | Workers: {total_threads} | Model: {model_name}")
+        
+        self.is_running = True
+        
+        for priority, thread_count in PRIORITY_THREAD_ALLOCATION.items():
+            consumer = PriorityQueueConsumer(priority, thread_count, self.processor)
+            self.consumers[priority] = consumer
+            consumer_thread = threading.Thread(target=consumer.start_consuming, name=f"Consumer-{priority.name}")
+            self.consumer_threads[priority] = consumer_thread
+            consumer_thread.start()
+        
+        # Stats reporter
+        threading.Thread(target=self.stats_reporter, daemon=True).start()
+        
+        logger.info("All consumers started. Processing documents...")
+        
+        try:
+            for thread in self.consumer_threads.values():
+                thread.join()
+        except KeyboardInterrupt:
+            self.stop()
+    
+    def stats_reporter(self):
+        while self.is_running:
+            try:
+                time.sleep(60)
+                if self.is_running:
+                    stats = self.processor.stats
+                    logger.info(f"[STATS] Processed: {stats['total_processed']} | Errors: {stats['errors']}")
+            except Exception:
+                pass
+    
+    def stop(self):
+        logger.info("Stopping Extraction Service...")
+        self.is_running = False
+        
+        for consumer in self.consumers.values():
+            consumer.stop()
+        
+        logger.info("Extraction Service stopped")
+
+# Main Entry Point
+def main():
     try:
-        channel = connection.channel()
-        channel.queue_declare(queue=CONSUME_QUEUE_NAME, durable=True)
-        channel.basic_qos(prefetch_count=1)  # Process one message at a time
-        
-        print('[*] AI-Powered Extractor Agent waiting for messages. To exit press CTRL+C')
-
-        channel.basic_consume(queue=CONSUME_QUEUE_NAME, on_message_callback=process_message)
-        channel.start_consuming()
-        
-    except KeyboardInterrupt:
-        print('[!] Interrupted by user')
-        channel.stop_consuming()
+        service = PriorityExtractionService()
+        service.start()
     except Exception as e:
-        print(f"[!!!] Consumer error: {e}")
-        print(f"[!!!] Consumer error traceback: {traceback.format_exc()}")
-    finally:
-        if connection and connection.is_open:
-            connection.close()
-        rabbitmq_manager.cleanup_publish_connection()
+        logger.error(f"Service failed: {e}")
+        sys.exit(1)
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print('Interrupted')
-        exit(0)
-    except Exception as e:
-        print(f"[!!!] Extractor Agent crashed: {e}")
-        print(f"[!!!] Crash traceback: {traceback.format_exc()}")
-        rabbitmq_manager.cleanup_publish_connection()
-        exit(1)
+    main()

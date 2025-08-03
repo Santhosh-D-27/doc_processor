@@ -1,0 +1,867 @@
+2025-08-01 10:13:01,503 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 10:13:01,517 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:13:01,519 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=840, family=2, type=1, proto=6, laddr=('127.0.0.1', 62528), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:13:01,522 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B977A120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B977A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:13:01,542 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B977A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,543 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B977A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,544 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B977A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,554 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:13:01,556 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=492, family=2, type=1, proto=6, laddr=('127.0.0.1', 62531), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:13:01,558 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B97C3890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B97C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:13:01,584 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B97C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,585 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B97C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,587 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B97C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,593 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:13:01,595 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=896, family=2, type=1, proto=6, laddr=('127.0.0.1', 62534), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:13:01,601 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B972C690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B972C690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:13:01,624 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B972C690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,626 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B972C690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,626 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B972C690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,635 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:13:01,637 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=768, family=2, type=1, proto=6, laddr=('127.0.0.1', 62537), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:13:01,641 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9772520>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9772520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:13:01,658 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9772520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,661 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9772520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,662 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9772520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,671 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:13:01,672 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=516, family=2, type=1, proto=6, laddr=('127.0.0.1', 62540), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:13:01,674 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9773230>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9773230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:13:01,708 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9773230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,712 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9773230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,714 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9773230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,823 - __main__ - INFO - ================================================================================
+2025-08-01 10:13:01,824 - __main__ - INFO - Max Workers: 8
+2025-08-01 10:13:01,826 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 10:13:01,826 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 10:13:01,827 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 10:13:01,827 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 10:13:01,828 - __main__ - INFO - ================================================================================
+2025-08-01 10:13:01,838 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:13:01,839 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=864, family=2, type=1, proto=6, laddr=('127.0.0.1', 62543), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:13:01,842 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9745370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9745370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:13:01,873 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9745370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,876 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9745370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,878 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000176B9745370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:13:01,879 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:13:01,899 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 10:13:01,919 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 10:14:01,940 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:14:01,940 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:14:01,940 - __main__ - INFO -    Errors: 0
+2025-08-01 10:14:01,941 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:14:01,941 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:14:01,941 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:15:01,944 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:15:01,945 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:15:01,945 - __main__ - INFO -    Errors: 0
+2025-08-01 10:15:01,945 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:15:01,945 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:15:01,946 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:16:01,949 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:16:01,950 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:16:01,951 - __main__ - INFO -    Errors: 0
+2025-08-01 10:16:01,951 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:16:01,951 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:16:01,952 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:17:01,955 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:17:01,955 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:17:01,955 - __main__ - INFO -    Errors: 0
+2025-08-01 10:17:01,956 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:17:01,956 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:17:01,956 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:18:01,959 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:18:01,960 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:18:01,960 - __main__ - INFO -    Errors: 0
+2025-08-01 10:18:01,960 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:18:01,960 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:18:01,961 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:19:01,964 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:19:01,964 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:19:01,964 - __main__ - INFO -    Errors: 0
+2025-08-01 10:19:01,965 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:19:01,965 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:19:01,965 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:20:01,968 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:20:01,968 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:20:01,969 - __main__ - INFO -    Errors: 0
+2025-08-01 10:20:01,969 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:20:01,970 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:20:01,970 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:21:01,973 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:21:01,973 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:21:01,974 - __main__ - INFO -    Errors: 0
+2025-08-01 10:21:01,974 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:21:01,974 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:21:01,974 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:22:01,978 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:22:01,979 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:22:01,979 - __main__ - INFO -    Errors: 0
+2025-08-01 10:22:01,979 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:22:01,979 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:22:01,980 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:23:01,983 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:23:01,983 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:23:01,984 - __main__ - INFO -    Errors: 0
+2025-08-01 10:23:01,984 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:23:01,984 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:23:01,984 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:24:01,991 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:24:01,992 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:24:01,992 - __main__ - INFO -    Errors: 0
+2025-08-01 10:24:01,992 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:24:01,993 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:24:01,993 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:25:01,997 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:25:01,997 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:25:01,997 - __main__ - INFO -    Errors: 0
+2025-08-01 10:25:01,997 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:25:01,998 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:25:01,998 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:26:02,001 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:26:02,001 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:26:02,001 - __main__ - INFO -    Errors: 0
+2025-08-01 10:26:02,001 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:26:02,001 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:26:02,002 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:27:02,005 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:27:02,005 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:27:02,005 - __main__ - INFO -    Errors: 0
+2025-08-01 10:27:02,006 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:27:02,006 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:27:02,006 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:28:02,010 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:28:02,011 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:28:02,011 - __main__ - INFO -    Errors: 0
+2025-08-01 10:28:02,011 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:28:02,011 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:28:02,012 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:29:02,015 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:29:02,015 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:29:02,016 - __main__ - INFO -    Errors: 0
+2025-08-01 10:29:02,016 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:29:02,016 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:29:02,017 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:30:02,020 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:30:02,020 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:30:02,020 - __main__ - INFO -    Errors: 0
+2025-08-01 10:30:02,021 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:30:02,021 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:30:02,021 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:31:02,025 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:31:02,025 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:31:02,026 - __main__ - INFO -    Errors: 0
+2025-08-01 10:31:02,026 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:31:02,026 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:31:02,027 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:32:02,031 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:32:02,031 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:32:02,031 - __main__ - INFO -    Errors: 0
+2025-08-01 10:32:02,031 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:32:02,032 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:32:02,032 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:33:02,035 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:33:02,035 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:33:02,035 - __main__ - INFO -    Errors: 0
+2025-08-01 10:33:02,036 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:33:02,036 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:33:02,036 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:34:02,040 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:34:02,040 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:34:02,040 - __main__ - INFO -    Errors: 0
+2025-08-01 10:34:02,041 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:34:02,041 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:34:02,041 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:35:02,050 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:35:02,051 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:35:02,051 - __main__ - INFO -    Errors: 0
+2025-08-01 10:35:02,053 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:35:02,054 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:35:02,054 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:36:02,060 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:36:02,061 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:36:02,061 - __main__ - INFO -    Errors: 0
+2025-08-01 10:36:02,062 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:36:02,063 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:36:02,063 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:37:02,067 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:37:02,068 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:37:02,068 - __main__ - INFO -    Errors: 0
+2025-08-01 10:37:02,068 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:37:02,069 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:37:02,069 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:38:02,073 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:38:02,074 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:38:02,074 - __main__ - INFO -    Errors: 0
+2025-08-01 10:38:02,075 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:38:02,075 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:38:02,075 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:38:28,559 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 10:38:28,570 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:38:28,571 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=812, family=2, type=1, proto=6, laddr=('127.0.0.1', 63279), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:38:28,573 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA4A120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA4A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:38:28,591 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA4A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,591 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA4A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,592 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA4A120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,596 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:38:28,599 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=872, family=2, type=1, proto=6, laddr=('127.0.0.1', 63282), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:38:28,603 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA93890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA93890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:38:28,616 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA93890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,617 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA93890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,618 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA93890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,622 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:38:28,623 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=860, family=2, type=1, proto=6, laddr=('127.0.0.1', 63285), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:38:28,624 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BF9FC690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BF9FC690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:38:28,640 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BF9FC690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,640 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BF9FC690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,641 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BF9FC690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,646 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:38:28,649 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=632, family=2, type=1, proto=6, laddr=('127.0.0.1', 63288), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:38:28,651 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA42520>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA42520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:38:28,663 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA42520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,665 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA42520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,668 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA42520> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,672 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:38:28,674 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=816, family=2, type=1, proto=6, laddr=('127.0.0.1', 63291), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:38:28,675 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA43230>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA43230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:38:28,691 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA43230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,692 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA43230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,693 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA43230> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,708 - __main__ - INFO - ================================================================================
+2025-08-01 10:38:28,709 - __main__ - INFO - Max Workers: 8
+2025-08-01 10:38:28,709 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 10:38:28,711 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 10:38:28,711 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 10:38:28,712 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 10:38:28,712 - __main__ - INFO - ================================================================================
+2025-08-01 10:38:28,721 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:38:28,722 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=748, family=2, type=1, proto=6, laddr=('127.0.0.1', 63295), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:38:28,724 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA15370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA15370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:38:28,741 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA15370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,742 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA15370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,743 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001C5BFA15370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:38:28,744 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:38:28,762 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 10:38:28,795 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 10:39:28,775 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:39:28,776 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:39:28,776 - __main__ - INFO -    Errors: 0
+2025-08-01 10:39:28,776 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:39:28,776 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:39:28,776 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:40:28,780 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:40:28,781 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:40:28,781 - __main__ - INFO -    Errors: 0
+2025-08-01 10:40:28,781 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:40:28,782 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:40:28,782 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:41:28,787 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:41:28,787 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:41:28,787 - __main__ - INFO -    Errors: 0
+2025-08-01 10:41:28,788 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:41:28,788 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:41:28,788 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:41:48,922 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 10:41:48,930 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:41:48,932 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=504, family=2, type=1, proto=6, laddr=('127.0.0.1', 63518), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:41:48,934 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B00075E120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B00075E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:41:48,950 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B00075E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,951 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B00075E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,952 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B00075E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,955 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:41:48,957 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=880, family=2, type=1, proto=6, laddr=('127.0.0.1', 63521), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:41:48,958 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007A3890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007A3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:41:48,971 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007A3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,971 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007A3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,972 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007A3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,975 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:41:48,976 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=696, family=2, type=1, proto=6, laddr=('127.0.0.1', 63524), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:41:48,978 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000710690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000710690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:41:48,994 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000710690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,994 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000710690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:48,995 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000710690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,001 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:41:49,004 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=908, family=2, type=1, proto=6, laddr=('127.0.0.1', 63527), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:41:49,005 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007563F0>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007563F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:41:49,016 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007563F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,017 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007563F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,018 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B0007563F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,021 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:41:49,022 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=860, family=2, type=1, proto=6, laddr=('127.0.0.1', 63530), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:41:49,024 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000757100>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000757100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:41:49,040 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000757100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,041 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000757100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,042 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000757100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,043 - __main__ - INFO - [START] Starting Priority-Aware Document Classification Service
+2025-08-01 10:41:49,043 - __main__ - INFO - ================================================================================
+2025-08-01 10:41:49,044 - __main__ - INFO - Max Workers: 8
+2025-08-01 10:41:49,044 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 10:41:49,044 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 10:41:49,045 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 10:41:49,046 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 10:41:49,047 - __main__ - INFO - ================================================================================
+2025-08-01 10:41:49,055 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:41:49,056 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=716, family=2, type=1, proto=6, laddr=('127.0.0.1', 63533), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:41:49,058 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000725370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000725370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:41:49,070 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000725370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,073 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000725370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,073 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000001B000725370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:41:49,074 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:41:49,089 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 10:41:49,090 - __main__ - INFO - [TARGET] Classification service started successfully!
+2025-08-01 10:41:49,091 - __main__ - INFO - [STATS] Statistics will be reported every 60 seconds
+2025-08-01 10:41:49,091 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 10:42:49,090 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:42:49,091 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:42:49,091 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:42:49,091 - __main__ - INFO -    Errors: 0
+2025-08-01 10:42:49,092 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:42:49,092 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:42:49,092 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:43:47,380 - __main__ - INFO - PRIORITY(20) Classifying 'sample_profile.pdf' (Doc ID: 26a35c30-1403-4d87-8b65-f2c56067e658)
+2025-08-01 10:43:47,394 - __main__ - INFO -   Classification: RESUME (confidence: 1.00, method: rule_based)
+2025-08-01 10:43:47,395 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:43:47,401 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:43:47,411 - __main__ - INFO - PRIORITY(20) Successfully classified 'sample_profile.pdf' as RESUME in 0.02s
+2025-08-01 10:43:49,093 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:43:49,094 - __main__ - INFO -    Total Processed: 1
+2025-08-01 10:43:49,094 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:43:49,094 - __main__ - INFO -    Errors: 0
+2025-08-01 10:43:49,095 - __main__ - INFO -    Average Time: 0.02s
+2025-08-01 10:43:49,095 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 10:43:49,095 - __main__ - INFO -    By Doc Type: {'RESUME': 1}
+2025-08-01 10:44:49,096 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:44:49,096 - __main__ - INFO -    Total Processed: 1
+2025-08-01 10:44:49,096 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:44:49,096 - __main__ - INFO -    Errors: 0
+2025-08-01 10:44:49,097 - __main__ - INFO -    Average Time: 0.02s
+2025-08-01 10:44:49,097 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 10:44:49,097 - __main__ - INFO -    By Doc Type: {'RESUME': 1}
+2025-08-01 10:45:49,098 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:45:49,098 - __main__ - INFO -    Total Processed: 1
+2025-08-01 10:45:49,099 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:45:49,100 - __main__ - INFO -    Errors: 0
+2025-08-01 10:45:49,100 - __main__ - INFO -    Average Time: 0.02s
+2025-08-01 10:45:49,101 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 10:45:49,101 - __main__ - INFO -    By Doc Type: {'RESUME': 1}
+2025-08-01 10:46:49,101 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:46:49,102 - __main__ - INFO -    Total Processed: 1
+2025-08-01 10:46:49,102 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:46:49,102 - __main__ - INFO -    Errors: 0
+2025-08-01 10:46:49,103 - __main__ - INFO -    Average Time: 0.02s
+2025-08-01 10:46:49,103 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 10:46:49,103 - __main__ - INFO -    By Doc Type: {'RESUME': 1}
+2025-08-01 10:47:49,104 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:47:49,105 - __main__ - INFO -    Total Processed: 1
+2025-08-01 10:47:49,105 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:47:49,105 - __main__ - INFO -    Errors: 0
+2025-08-01 10:47:49,106 - __main__ - INFO -    Average Time: 0.02s
+2025-08-01 10:47:49,106 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 10:47:49,106 - __main__ - INFO -    By Doc Type: {'RESUME': 1}
+2025-08-01 10:48:36,946 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 10:48:36,954 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:48:36,957 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=772, family=2, type=1, proto=6, laddr=('127.0.0.1', 63862), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:48:36,959 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC797E120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC797E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:48:36,974 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC797E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:36,974 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC797E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:36,975 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC797E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:36,979 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:48:36,980 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=760, family=2, type=1, proto=6, laddr=('127.0.0.1', 63865), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:48:36,982 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79C3890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:48:36,999 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,000 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,000 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79C3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,007 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:48:37,011 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=784, family=2, type=1, proto=6, laddr=('127.0.0.1', 63868), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:48:37,013 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7930690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7930690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:48:37,028 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7930690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,028 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7930690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,029 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7930690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,034 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:48:37,037 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=808, family=2, type=1, proto=6, laddr=('127.0.0.1', 63874), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:48:37,042 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79763F0>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:48:37,060 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,061 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,062 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC79763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,066 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:48:37,068 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=788, family=2, type=1, proto=6, laddr=('127.0.0.1', 63879), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:48:37,072 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7977100>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7977100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:48:37,092 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7977100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,095 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7977100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,096 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7977100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,099 - __main__ - INFO - [START] Starting Priority-Aware Document Classification Service
+2025-08-01 10:48:37,101 - __main__ - INFO - ================================================================================
+2025-08-01 10:48:37,104 - __main__ - INFO - Max Workers: 8
+2025-08-01 10:48:37,106 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 10:48:37,107 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 10:48:37,108 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 10:48:37,109 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 10:48:37,109 - __main__ - INFO - ================================================================================
+2025-08-01 10:48:37,114 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:48:37,115 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=712, family=2, type=1, proto=6, laddr=('127.0.0.1', 63886), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:48:37,117 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7945370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7945370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:48:37,142 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7945370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,143 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7945370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,144 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x000002BBC7945370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:48:37,146 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:48:37,167 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 10:48:37,174 - __main__ - INFO - [TARGET] Classification service started successfully!
+2025-08-01 10:48:37,176 - __main__ - INFO - [STATS] Statistics will be reported every 60 seconds
+2025-08-01 10:48:37,176 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 10:49:37,175 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:49:37,175 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:49:37,175 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:49:37,176 - __main__ - INFO -    Errors: 0
+2025-08-01 10:49:37,176 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:49:37,176 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:49:37,177 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:50:37,177 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:50:37,178 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:50:37,178 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:50:37,178 - __main__ - INFO -    Errors: 0
+2025-08-01 10:50:37,179 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:50:37,179 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:50:37,179 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:51:37,180 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:51:37,180 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:51:37,180 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:51:37,181 - __main__ - INFO -    Errors: 0
+2025-08-01 10:51:37,181 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:51:37,181 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:51:37,181 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:52:26,828 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 10:52:26,838 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:52:26,840 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=764, family=2, type=1, proto=6, laddr=('127.0.0.1', 64082), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:52:26,843 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78FE120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78FE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:52:26,859 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78FE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,860 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78FE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,861 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78FE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,865 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:52:26,867 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=508, family=2, type=1, proto=6, laddr=('127.0.0.1', 64085), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:52:26,869 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E7943890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E7943890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:52:26,884 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E7943890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,884 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E7943890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,886 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E7943890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,889 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:52:26,891 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=900, family=2, type=1, proto=6, laddr=('127.0.0.1', 64088), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:52:26,895 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78B0690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78B0690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:52:26,908 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78B0690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,909 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78B0690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,910 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78B0690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,917 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:52:26,918 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=892, family=2, type=1, proto=6, laddr=('127.0.0.1', 64091), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:52:26,922 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F63F0>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:52:26,934 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,937 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,938 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,942 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:52:26,945 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=748, family=2, type=1, proto=6, laddr=('127.0.0.1', 64094), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:52:26,948 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F7100>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:52:26,963 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,965 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,968 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78F7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,969 - __main__ - INFO - [START] Starting Priority-Aware Document Classification Service
+2025-08-01 10:52:26,970 - __main__ - INFO - ================================================================================
+2025-08-01 10:52:26,970 - __main__ - INFO - Max Workers: 8
+2025-08-01 10:52:26,970 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 10:52:26,971 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 10:52:26,971 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 10:52:26,972 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 10:52:26,972 - __main__ - INFO - ================================================================================
+2025-08-01 10:52:26,975 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:52:26,978 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=920, family=2, type=1, proto=6, laddr=('127.0.0.1', 64097), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:52:26,981 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78C5370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78C5370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:52:26,997 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78C5370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:26,998 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78C5370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:27,000 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000238E78C5370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:52:27,002 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:52:27,020 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 10:52:27,023 - __main__ - INFO - [TARGET] Classification service started successfully!
+2025-08-01 10:52:27,023 - __main__ - INFO - [STATS] Statistics will be reported every 60 seconds
+2025-08-01 10:52:27,024 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 10:53:27,023 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:53:27,023 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:53:27,024 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:53:27,024 - __main__ - INFO -    Errors: 0
+2025-08-01 10:53:27,024 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:53:27,025 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:53:27,025 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:54:27,026 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:54:27,027 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:54:27,027 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:54:27,027 - __main__ - INFO -    Errors: 0
+2025-08-01 10:54:27,028 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:54:27,028 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:54:27,028 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:55:22,526 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 10:55:22,540 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:55:22,543 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=632, family=2, type=1, proto=6, laddr=('127.0.0.1', 64286), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:55:22,545 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C7E120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:55:22,563 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,566 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,567 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,573 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:55:22,576 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=584, family=2, type=1, proto=6, laddr=('127.0.0.1', 64297), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:55:22,583 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039CC3890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039CC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:55:22,611 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039CC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,613 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039CC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,614 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039CC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,617 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:55:22,618 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=800, family=2, type=1, proto=6, laddr=('127.0.0.1', 64308), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:55:22,623 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C30690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:55:22,642 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,643 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,643 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,647 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:55:22,649 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=772, family=2, type=1, proto=6, laddr=('127.0.0.1', 64311), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:55:22,651 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C763F0>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:55:22,665 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,666 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,666 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,671 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:55:22,673 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=828, family=2, type=1, proto=6, laddr=('127.0.0.1', 64314), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:55:22,675 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C77100>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:55:22,692 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,693 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,694 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,694 - __main__ - INFO - [START] Starting Priority-Aware Document Classification Service
+2025-08-01 10:55:22,695 - __main__ - INFO - ================================================================================
+2025-08-01 10:55:22,696 - __main__ - INFO - Max Workers: 8
+2025-08-01 10:55:22,696 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 10:55:22,697 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 10:55:22,697 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 10:55:22,697 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 10:55:22,698 - __main__ - INFO - ================================================================================
+2025-08-01 10:55:22,701 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 10:55:22,702 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=796, family=2, type=1, proto=6, laddr=('127.0.0.1', 64317), raddr=('127.0.0.1', 5672)>
+2025-08-01 10:55:22,705 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C45370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 10:55:22,717 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,717 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,718 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000015039C45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 10:55:22,719 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 10:55:22,733 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 10:55:22,734 - __main__ - INFO - [TARGET] Classification service started successfully!
+2025-08-01 10:55:22,734 - __main__ - INFO - [STATS] Statistics will be reported every 60 seconds
+2025-08-01 10:55:22,735 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 10:56:22,734 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:56:22,735 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:56:22,735 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:56:22,736 - __main__ - INFO -    Errors: 0
+2025-08-01 10:56:22,738 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:56:22,740 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:56:22,742 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:57:22,744 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:57:22,744 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:57:22,745 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:57:22,745 - __main__ - INFO -    Errors: 0
+2025-08-01 10:57:22,745 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:57:22,746 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:57:22,746 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:58:22,747 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:58:22,747 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:58:22,747 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:58:22,748 - __main__ - INFO -    Errors: 0
+2025-08-01 10:58:22,748 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:58:22,748 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:58:22,749 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 10:59:22,750 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 10:59:22,750 - __main__ - INFO -    Total Processed: 0
+2025-08-01 10:59:22,750 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 10:59:22,750 - __main__ - INFO -    Errors: 0
+2025-08-01 10:59:22,751 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 10:59:22,751 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 10:59:22,751 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:00:22,752 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:00:22,752 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:00:22,752 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:00:22,753 - __main__ - INFO -    Errors: 0
+2025-08-01 11:00:22,753 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:00:22,753 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:00:22,754 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:01:22,755 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:01:22,755 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:01:22,755 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:01:22,756 - __main__ - INFO -    Errors: 0
+2025-08-01 11:01:22,756 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:01:22,757 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:01:22,758 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:02:22,759 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:02:22,759 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:02:22,760 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:02:22,761 - __main__ - INFO -    Errors: 0
+2025-08-01 11:02:22,761 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:02:22,762 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:02:22,762 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:03:22,763 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:03:22,764 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:03:22,764 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:03:22,765 - __main__ - INFO -    Errors: 0
+2025-08-01 11:03:22,765 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:03:22,765 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:03:22,765 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:04:22,766 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:04:22,766 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:04:22,767 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:04:22,767 - __main__ - INFO -    Errors: 0
+2025-08-01 11:04:22,767 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:04:22,767 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:04:22,767 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:05:22,768 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:05:22,768 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:05:22,769 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:05:22,769 - __main__ - INFO -    Errors: 0
+2025-08-01 11:05:22,769 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:05:22,769 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:05:22,770 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:06:24,876 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 11:06:24,886 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:06:24,887 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=848, family=2, type=1, proto=6, laddr=('127.0.0.1', 64701), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:06:24,889 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4BE120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:06:24,903 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,904 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,905 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,908 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:06:24,909 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=820, family=2, type=1, proto=6, laddr=('127.0.0.1', 64704), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:06:24,910 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF503890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF503890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:06:24,922 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF503890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,923 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF503890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,924 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF503890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,927 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:06:24,928 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=624, family=2, type=1, proto=6, laddr=('127.0.0.1', 64707), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:06:24,929 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF470690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF470690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:06:24,941 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF470690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,941 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF470690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,942 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF470690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,945 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:06:24,946 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=612, family=2, type=1, proto=6, laddr=('127.0.0.1', 64710), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:06:24,948 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B63F0>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:06:24,959 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,960 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,960 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,963 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:06:24,964 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=760, family=2, type=1, proto=6, laddr=('127.0.0.1', 64713), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:06:24,966 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B7100>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:06:24,977 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,977 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,978 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF4B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:24,979 - __main__ - INFO - [START] Starting Priority-Aware Document Classification Service
+2025-08-01 11:06:24,979 - __main__ - INFO - ================================================================================
+2025-08-01 11:06:24,979 - __main__ - INFO - Max Workers: 8
+2025-08-01 11:06:24,980 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 11:06:24,980 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 11:06:24,981 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 11:06:24,982 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 11:06:24,982 - __main__ - INFO - ================================================================================
+2025-08-01 11:06:24,987 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:06:24,988 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=752, family=2, type=1, proto=6, laddr=('127.0.0.1', 64716), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:06:24,989 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF485370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF485370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:06:24,999 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF485370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:25,000 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF485370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:25,002 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x00000284DF485370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:06:25,003 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 11:06:25,013 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 11:06:25,016 - __main__ - INFO - [TARGET] Classification service started successfully!
+2025-08-01 11:06:25,016 - __main__ - INFO - [STATS] Statistics will be reported every 60 seconds
+2025-08-01 11:06:25,017 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 11:07:24,226 - __main__ - INFO - PRIORITY(20) Classifying 'download.png' (Doc ID: 090b1d9c-7d27-4944-b375-77dde6b21a60)
+2025-08-01 11:07:25,016 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:07:25,017 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:07:25,017 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:07:25,018 - __main__ - INFO -    Errors: 0
+2025-08-01 11:07:25,018 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:07:25,018 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:07:25,018 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:07:25,251 - __main__ - INFO -   Classification: INVOICE (confidence: 0.95, method: llm_primary)
+2025-08-01 11:07:25,252 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 11:07:25,258 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 11:07:25,264 - __main__ - INFO - PRIORITY(20) Successfully classified 'download.png' as INVOICE in 1.03s
+2025-08-01 11:08:25,020 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:08:25,020 - __main__ - INFO -    Total Processed: 1
+2025-08-01 11:08:25,021 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:08:25,022 - __main__ - INFO -    Errors: 0
+2025-08-01 11:08:25,022 - __main__ - INFO -    Average Time: 1.03s
+2025-08-01 11:08:25,023 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 11:08:25,024 - __main__ - INFO -    By Doc Type: {'INVOICE': 1}
+2025-08-01 11:09:25,024 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:09:25,025 - __main__ - INFO -    Total Processed: 1
+2025-08-01 11:09:25,025 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:09:25,025 - __main__ - INFO -    Errors: 0
+2025-08-01 11:09:25,025 - __main__ - INFO -    Average Time: 1.03s
+2025-08-01 11:09:25,026 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 11:09:25,026 - __main__ - INFO -    By Doc Type: {'INVOICE': 1}
+2025-08-01 11:10:25,027 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:10:25,027 - __main__ - INFO -    Total Processed: 1
+2025-08-01 11:10:25,027 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:10:25,028 - __main__ - INFO -    Errors: 0
+2025-08-01 11:10:25,028 - __main__ - INFO -    Average Time: 1.03s
+2025-08-01 11:10:25,028 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 11:10:25,029 - __main__ - INFO -    By Doc Type: {'INVOICE': 1}
+2025-08-01 11:11:25,029 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:11:25,030 - __main__ - INFO -    Total Processed: 1
+2025-08-01 11:11:25,030 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:11:25,030 - __main__ - INFO -    Errors: 0
+2025-08-01 11:11:25,031 - __main__ - INFO -    Average Time: 1.03s
+2025-08-01 11:11:25,031 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 11:11:25,031 - __main__ - INFO -    By Doc Type: {'INVOICE': 1}
+2025-08-01 11:12:25,032 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:12:25,033 - __main__ - INFO -    Total Processed: 1
+2025-08-01 11:12:25,033 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:12:25,033 - __main__ - INFO -    Errors: 0
+2025-08-01 11:12:25,034 - __main__ - INFO -    Average Time: 1.03s
+2025-08-01 11:12:25,034 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 11:12:25,035 - __main__ - INFO -    By Doc Type: {'INVOICE': 1}
+2025-08-01 11:13:25,037 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:13:25,038 - __main__ - INFO -    Total Processed: 1
+2025-08-01 11:13:25,038 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:13:25,039 - __main__ - INFO -    Errors: 0
+2025-08-01 11:13:25,039 - __main__ - INFO -    Average Time: 1.03s
+2025-08-01 11:13:25,040 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 11:13:25,040 - __main__ - INFO -    By Doc Type: {'INVOICE': 1}
+2025-08-01 11:14:25,040 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:14:25,041 - __main__ - INFO -    Total Processed: 1
+2025-08-01 11:14:25,041 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:14:25,041 - __main__ - INFO -    Errors: 0
+2025-08-01 11:14:25,041 - __main__ - INFO -    Average Time: 1.03s
+2025-08-01 11:14:25,042 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 1, 'BULK': 0}
+2025-08-01 11:14:25,042 - __main__ - INFO -    By Doc Type: {'INVOICE': 1}
+2025-08-01 11:14:37,518 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 11:14:37,534 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:14:37,539 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=612, family=2, type=1, proto=6, laddr=('127.0.0.1', 64903), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:14:37,547 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF7E120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:14:37,570 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,572 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,573 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF7E120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,580 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:14:37,585 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=724, family=2, type=1, proto=6, laddr=('127.0.0.1', 64907), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:14:37,587 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FFC3890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FFC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:14:37,604 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FFC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,605 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FFC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,606 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FFC3890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,610 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:14:37,611 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=596, family=2, type=1, proto=6, laddr=('127.0.0.1', 64910), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:14:37,615 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF30690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:14:37,635 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,636 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,638 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF30690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,644 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:14:37,646 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=756, family=2, type=1, proto=6, laddr=('127.0.0.1', 64913), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:14:37,650 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF763F0>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:14:37,676 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,676 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,677 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF763F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,683 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:14:37,685 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=592, family=2, type=1, proto=6, laddr=('127.0.0.1', 64916), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:14:37,688 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF77100>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:14:37,729 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,736 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,737 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF77100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,738 - __main__ - INFO - [START] Starting Priority-Aware Document Classification Service
+2025-08-01 11:14:37,739 - __main__ - INFO - ================================================================================
+2025-08-01 11:14:37,740 - __main__ - INFO - Max Workers: 8
+2025-08-01 11:14:37,742 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 11:14:37,745 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 11:14:37,751 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 11:14:37,751 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 11:14:37,752 - __main__ - INFO - ================================================================================
+2025-08-01 11:14:37,758 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:14:37,766 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=792, family=2, type=1, proto=6, laddr=('127.0.0.1', 64919), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:14:37,771 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF45370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:14:37,801 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,806 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,807 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000018C5FF45370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:14:37,808 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 11:14:37,831 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 11:14:37,834 - __main__ - INFO - [TARGET] Classification service started successfully!
+2025-08-01 11:14:37,834 - __main__ - INFO - [STATS] Statistics will be reported every 60 seconds
+2025-08-01 11:14:37,835 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 11:15:37,834 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:15:37,835 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:15:37,835 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:15:37,836 - __main__ - INFO -    Errors: 0
+2025-08-01 11:15:37,836 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:15:37,836 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:15:37,837 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:16:37,837 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:16:37,838 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:16:37,838 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:16:37,838 - __main__ - INFO -    Errors: 0
+2025-08-01 11:16:37,839 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:16:37,839 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:16:37,839 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:17:37,840 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:17:37,841 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:17:37,841 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:17:37,841 - __main__ - INFO -    Errors: 0
+2025-08-01 11:17:37,842 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:17:37,842 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:17:37,843 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:18:25,078 - __main__ - INFO - Google Gemini client initialized successfully.
+2025-08-01 11:18:25,089 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:18:25,090 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=808, family=2, type=1, proto=6, laddr=('127.0.0.1', 65023), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:18:25,092 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066BE120>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:18:25,105 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,106 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,106 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066BE120> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,110 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:18:25,112 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=740, family=2, type=1, proto=6, laddr=('127.0.0.1', 65026), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:18:25,113 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06703890>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06703890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:18:25,126 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06703890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,127 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06703890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,128 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06703890> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,131 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:18:25,132 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=756, family=2, type=1, proto=6, laddr=('127.0.0.1', 65029), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:18:25,135 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06670690>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06670690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:18:25,148 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06670690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,149 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06670690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,150 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06670690> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,158 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:18:25,159 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=460, family=2, type=1, proto=6, laddr=('127.0.0.1', 65032), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:18:25,161 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B63F0>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:18:25,174 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,174 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,175 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B63F0> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,179 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:18:25,180 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=644, family=2, type=1, proto=6, laddr=('127.0.0.1', 65035), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:18:25,181 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B7100>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:18:25,194 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,195 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,195 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B066B7100> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,196 - __main__ - INFO - [START] Starting Priority-Aware Document Classification Service
+2025-08-01 11:18:25,197 - __main__ - INFO - ================================================================================
+2025-08-01 11:18:25,197 - __main__ - INFO - Max Workers: 8
+2025-08-01 11:18:25,197 - __main__ - INFO - Prefetch Count: 2
+2025-08-01 11:18:25,198 - __main__ - INFO - VIP Alert Threshold: medium
+2025-08-01 11:18:25,198 - __main__ - INFO - VIP Domains: 4 configured
+2025-08-01 11:18:25,199 - __main__ - INFO - VIP Keywords: 16 configured
+2025-08-01 11:18:25,200 - __main__ - INFO - ================================================================================
+2025-08-01 11:18:25,205 - pika.adapters.utils.connection_workflow - INFO - Pika version 1.3.2 connecting to ('127.0.0.1', 5672)
+2025-08-01 11:18:25,206 - pika.adapters.utils.io_services_utils - INFO - Socket connected: <socket.socket fd=668, family=2, type=1, proto=6, laddr=('127.0.0.1', 65038), raddr=('127.0.0.1', 5672)>
+2025-08-01 11:18:25,208 - pika.adapters.utils.connection_workflow - INFO - Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06685370>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06685370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>).
+2025-08-01 11:18:25,220 - pika.adapters.utils.connection_workflow - INFO - AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06685370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,220 - pika.adapters.utils.connection_workflow - INFO - AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06685370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,221 - pika.adapters.blocking_connection - INFO - Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x0000021B06685370> params=<ConnectionParameters host=127.0.0.1 port=5672 virtual_host=/ ssl=False>>
+2025-08-01 11:18:25,222 - pika.adapters.blocking_connection - INFO - Created channel=1
+2025-08-01 11:18:25,237 - __main__ - INFO - Connected to RabbitMQ successfully
+2025-08-01 11:18:25,241 - __main__ - INFO - [TARGET] Classification service started successfully!
+2025-08-01 11:18:25,242 - __main__ - INFO - [STATS] Statistics will be reported every 60 seconds
+2025-08-01 11:18:25,242 - __main__ - INFO - Waiting for classification tasks...
+2025-08-01 11:19:25,242 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:19:25,242 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:19:25,242 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:19:25,243 - __main__ - INFO -    Errors: 0
+2025-08-01 11:19:25,243 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:19:25,243 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:19:25,244 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:20:25,244 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:20:25,245 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:20:25,245 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:20:25,245 - __main__ - INFO -    Errors: 0
+2025-08-01 11:20:25,246 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:20:25,246 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:20:25,246 - __main__ - INFO -    By Doc Type: {}
+2025-08-01 11:21:25,247 - __main__ - INFO - [STATS] CLASSIFICATION STATISTICS:
+2025-08-01 11:21:25,248 - __main__ - INFO -    Total Processed: 0
+2025-08-01 11:21:25,248 - __main__ - INFO -    VIP Processed: 0
+2025-08-01 11:21:25,248 - __main__ - INFO -    Errors: 0
+2025-08-01 11:21:25,248 - __main__ - INFO -    Average Time: 0.00s
+2025-08-01 11:21:25,249 - __main__ - INFO -    By Priority: {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'BULK': 0}
+2025-08-01 11:21:25,249 - __main__ - INFO -    By Doc Type: {}

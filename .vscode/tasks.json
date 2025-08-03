@@ -9,7 +9,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Start Ingestor API",
+      "label": "Start Ingestor",
       "type": "shell",
       "command": ".\\venv\\Scripts\\python.exe -m uvicorn ingestor.main:app --host 0.0.0.0 --port 8001 --reload",
       "options": { "cwd": "${workspaceFolder}" },
@@ -17,24 +17,8 @@
       "presentation": { "panel": "new" },
       "problemMatcher": []
     },
-    {
-      "label": "Start Email Ingestor",
-      "type": "shell",
-      "command": ".\\venv\\Scripts\\python.exe ingestor\\email_monitor.py",
-      "options": { "cwd": "${workspaceFolder}" },
-      "dependsOn": ["Start RabbitMQ"],
-      "presentation": { "panel": "new" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Start File Ingestor",
-      "type": "shell",
-      "command": ".\\venv\\Scripts\\python.exe ingestor\\file_monitor.py",
-      "options": { "cwd": "${workspaceFolder}" },
-      "dependsOn": ["Start RabbitMQ"],
-      "presentation": { "panel": "new" },
-      "problemMatcher": []
-    },
+   
+    
     {
       "label": "Start Extractor",
       "type": "shell",
@@ -82,9 +66,7 @@
     {
       "label": "Start All Services",
       "dependsOn": [
-        "Start Ingestor API",
-        "Start Email Ingestor",
-        "Start File Ingestor",
+        "Start Ingestor",
         "Start Extractor",
         "Start Classifier",
         "Start Router",

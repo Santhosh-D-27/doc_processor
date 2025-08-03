@@ -9,25 +9,21 @@ import asyncio
 import time
 import os
 import base64
+import requests
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from typing import List, Optional # Import Optional
-import imaplib
-from fastapi.middleware.cors import CORSMiddleware # This line is critical
-from datetime import datetime, UTC # Import UTC for timezone-aware datetimes
+from typing import List, Optional
+from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime, UTC
 
 # --- Configuration ---
 RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', '127.0.0.1')
 STATUS_QUEUE_NAME = 'document_status_queue'
 DB_NAME = 'web_ui/state.db'
+INGESTOR_URL = 'http://127.0.0.1:8001'  # Ingestor OAuth manager URL
 
 # --- Pydantic Models for API Data Validation ---
-class Mailbox(BaseModel):
-    email: str
-    app_password: str
-    folder: str = 'inbox'
-
 class VIPContactCreate(BaseModel):
     email: str
     name: Optional[str] = None
@@ -53,12 +49,13 @@ def setup_database():
             doc_type TEXT,
             confidence REAL,
             last_updated TEXT,
-            is_vip BOOLEAN DEFAULT 0,          -- New: VIP status
-            vip_level TEXT DEFAULT 'NONE',     -- New: VIP level (HIGH, MEDIUM, LOW, NONE)
-            summary TEXT,                      -- New: Document summary
-            priority_content TEXT              -- New: JSON string of priority content
+            is_vip BOOLEAN DEFAULT 0,
+            vip_level TEXT DEFAULT 'NONE',
+            summary TEXT,
+            priority_content TEXT
         )
     ''')
+    
     # Enhanced document_history table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS document_history (
@@ -70,25 +67,44 @@ def setup_database():
             doc_type TEXT,
             confidence REAL,
             file_content_encoded TEXT,
-            is_vip BOOLEAN DEFAULT 0,          -- New: VIP status in history
-            vip_level TEXT DEFAULT 'NONE',     -- New: VIP level in history
-            summary TEXT,                      -- New: Document summary in history
-            priority_content TEXT,             -- New: JSON string of priority content in history
+            is_vip BOOLEAN DEFAULT 0,
+            vip_level TEXT DEFAULT 'NONE',
+            summary TEXT,
+            priority_content TEXT,
             FOREIGN KEY (document_id) REFERENCES document_status (document_id)
         )
     ''')
-    # Mailbox Configurations Table (unchanged, but ensure types match)
+    
+    # OAuth tables (keep these for OAuth functionality)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS mailboxes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL UNIQUE,
-            app_password_encoded TEXT NOT NULL,
-            folder TEXT NOT NULL,
-            status TEXT DEFAULT 'Pending',
-            status_timestamp TEXT
+        CREATE TABLE IF NOT EXISTS oauth_tokens (
+            email TEXT PRIMARY KEY,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT,
+            expires_at TEXT,
+            created_at TEXT NOT NULL,
+            status TEXT DEFAULT 'active'
         )
     ''')
-    # New VIP Documents Table
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mailboxes (
+            email TEXT PRIMARY KEY,
+            status TEXT DEFAULT 'connected',
+            connected_at TEXT NOT NULL
+        )
+    ''')
+    
+    # VIP Tables
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS vip_documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,7 +120,7 @@ def setup_database():
             FOREIGN KEY (document_id) REFERENCES document_status (document_id)
         )
     ''')
-    # New VIP Contacts Table
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS vip_contacts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,7 +168,6 @@ def consume_status_updates():
                 status = message.get("status")
                 timestamp = message.get("timestamp")
                 
-                # New fields from extractor and classifier
                 doc_type = message.get("doc_type")
                 confidence = message.get("confidence")
                 is_vip = message.get("is_vip", False)
@@ -197,12 +212,12 @@ def consume_status_updates():
                         is_vip,
                         vip_level,
                         summary,
-                        json.dumps(priority_content) # Store priority_content as JSON string
+                        json.dumps(priority_content)
                     ))
 
                     # If it's a VIP document and Routed, add/update vip_documents table
                     if is_vip and status == "Routed":
-                        sender = message.get("details", {}).get("sender", "N/A") # Get sender if available from ingestion details
+                        sender = message.get("details", {}).get("sender", "N/A")
                         cursor.execute("""
                             INSERT OR REPLACE INTO vip_documents
                             (document_id, filename, vip_level, sender, summary, priority_content, status, last_updated)
@@ -214,7 +229,7 @@ def consume_status_updates():
                             sender,
                             summary,
                             json.dumps(priority_content),
-                            "Routed", # Initial status in VIP dashboard
+                            "Routed",
                             datetime.now(UTC).isoformat()
                         ))
                     
@@ -260,19 +275,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Helper function to test mailbox credentials ---
-def test_mailbox_connection(email: str, app_password: str) -> bool:
-    try:
-        print(f"  -> Testing connection for {email}...")
-        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(email, app_password)
-        mail.logout()
-        print(f"  -> Connection successful for {email}.")
-        return True
-    except imaplib.IMAP4.error as e:
-        print(f"  -> Connection failed for {email}: {e}")
-        return False
-
 # --- API Endpoints ---
 @app.get("/documents")
 def get_all_documents():
@@ -314,7 +316,7 @@ def get_doc_for_reprocessing(document_id: str):
     conn.close()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    return dict(doc) # Return as dict
+    return dict(doc)
 
 @app.post("/re-classify/{document_id}")
 def re_classify_document(document_id: str):
@@ -324,23 +326,23 @@ def re_classify_document(document_id: str):
     extracted_details = {}
     extracted_summary = ""
     extracted_priority_content = {}
-    extracted_entities = {} # Ensure entities are passed through
+    extracted_entities = {}
 
     for event in reversed(history_events):
         if event['status'] == 'Extracted':
             extracted_details = event.get('details', {})
             extracted_summary = event.get('summary', '')
             extracted_priority_content = event.get('priority_content', {})
-            extracted_entities = extracted_details.get('entities', {}) # Get entities from details
+            extracted_entities = extracted_details.get('entities', {})
             break
 
     message = {
         'document_id': doc['document_id'],
         'filename': doc['filename'],
         'extracted_text': extracted_details.get('extracted_text', ''),
-        'summary': extracted_summary, # Pass summary
-        'priority_content': extracted_priority_content, # Pass priority content
-        'entities': extracted_entities # Pass entities
+        'summary': extracted_summary,
+        'priority_content': extracted_priority_content,
+        'entities': extracted_entities
     }
     
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
@@ -354,45 +356,45 @@ def re_classify_document(document_id: str):
 def re_extract_document(document_id: str):
     print(f"[API] Received request to re-extract document: {document_id}")
     try:
-        # 1. Get the document's full history
+        # Get the document's full history
         history_events = get_document_history(document_id)
         
-        # 2. Find the original 'Ingested' event which contains the file content
+        # Find the original 'Ingested' event which contains the file content
         ingested_event = next((event for event in history_events if event['status'] == 'Ingested'), None)
 
         if not ingested_event:
             raise HTTPException(status_code=404, detail="Original ingestion record not found.")
 
-        # 3. Get the encoded file content directly from the database record
+        # Get the encoded file content directly from the database record
         file_content_b64 = ingested_event.get('file_content_encoded')
         if not file_content_b64:
             raise HTTPException(status_code=404, detail="Encoded file content not found in ingestion history.")
 
-        # 4. Get the original filename and sender from the 'details' JSON
+        # Get the original filename and sender from the 'details' JSON
         ingested_details = ingested_event.get('details', {})
         original_filename = ingested_details.get('filename')
-        sender = ingested_details.get('sender') # Extract sender
+        sender = ingested_details.get('sender')
         if not original_filename:
              raise HTTPException(status_code=404, detail="Original filename not found in ingestion history.")
 
-        # 5. Prepare the message for the extraction queue
+        # Prepare the message for the extraction queue
         message_to_extractor = {
             'document_id': document_id,
             'filename': original_filename,
             'file_content': file_content_b64, 
             'priority': 'high',
             'source': 'manual_re-extract',
-            'content_type': ingested_details.get('content_type', 'application/octet-stream'), # Ensure content_type is passed
-            'sender': sender # Pass sender
+            'content_type': ingested_details.get('content_type', 'application/octet-stream'),
+            'sender': sender
         }
 
-        # 6. Publish the message to RabbitMQ
+        # Publish the message to RabbitMQ
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
         channel = connection.channel()
-        channel.queue_declare(queue='doc_received_queue', durable=True)
+        channel.queue_declare(queue='doc_received_medium', durable=True)
         channel.basic_publish(
             exchange='', 
-            routing_key='doc_received_queue', 
+            routing_key='doc_received_medium',  # ✅ CORRECT QUEUE
             body=json.dumps(message_to_extractor)
         )
         connection.close()
@@ -406,45 +408,71 @@ def re_extract_document(document_id: str):
         print(f"[API Error] Failed to re-extract {document_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- Mailbox Management API Endpoints ---
-@app.get("/mailboxes")
-def get_mailboxes():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, email, folder, status FROM mailboxes")
-    mailboxes = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in mailboxes]
-
-@app.post("/mailboxes")
-def add_mailbox(mailbox: Mailbox):
-    is_valid = test_mailbox_connection(mailbox.email, mailbox.app_password)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Authentication failed. Please check the email and App Password.")
-
-    encoded_password = base64.b64encode(mailbox.app_password.encode()).decode()
+# --- OAuth Mailbox Status Endpoint (for monitoring) ---
+@app.get("/oauth-mailboxes")
+def get_oauth_mailboxes():
+    """Get OAuth connected mailboxes status from ingestor service"""
     try:
+        # First try to get from local database
         conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO mailboxes (email, app_password_encoded, folder, status, status_timestamp) VALUES (?, ?, ?, ?, ?)",
-            (mailbox.email, encoded_password, mailbox.folder, "Connected", datetime.now(UTC).isoformat()) # Use datetime.now(UTC)
-        )
-        conn.commit()
+        cursor.execute("""
+            SELECT m.email, m.status, m.connected_at, t.expires_at
+            FROM mailboxes m
+            JOIN oauth_tokens t ON m.email = t.email
+            WHERE m.status = 'connected' AND t.status = 'active'
+        """)
+        mailboxes = cursor.fetchall()
         conn.close()
-        return {"status": "success", "email": mailbox.email}
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="Email address already configured.")
+        
+        # If no local data, try to get from ingestor service
+        if not mailboxes:
+            try:
+                response = requests.get(f"{INGESTOR_URL}/oauth-status", timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    return data.get('mailboxes', [])
+            except Exception as e:
+                print(f"[OAuth] Could not reach ingestor service: {e}")
+        
+        return [dict(row) for row in mailboxes]
+    except Exception as e:
+        print(f"[OAuth] Error fetching OAuth mailboxes: {e}")
+        return []
 
-@app.delete("/mailboxes/{mailbox_id}")
-def delete_mailbox(mailbox_id: int):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM mailboxes WHERE id = ?", (mailbox_id,))
-    conn.commit()
-    conn.close()
-    return {"status": "success", "id": mailbox_id}
+@app.get("/oauth-status") 
+def get_oauth_status():
+    """Get comprehensive OAuth status"""
+    try:
+        # Get mailboxes
+        mailboxes = get_oauth_mailboxes()
+        
+        # Try to get status from ingestor service
+        ingestor_status = None
+        try:
+            response = requests.get(f"{INGESTOR_URL}/oauth-status", timeout=5)
+            if response.status_code == 200:
+                ingestor_status = response.json()
+        except Exception as e:
+            print(f"[OAuth] Could not reach ingestor service: {e}")
+        
+        return {
+            "connected_count": len(mailboxes),
+            "mailboxes": mailboxes,
+            "oauth_manager_url": INGESTOR_URL,
+            "ingestor_service_status": "connected" if ingestor_status else "disconnected",
+            "ingestor_data": ingestor_status
+        }
+    except Exception as e:
+        print(f"[OAuth] Error getting OAuth status: {e}")
+        return {
+            "connected_count": 0,
+            "mailboxes": [],
+            "oauth_manager_url": INGESTOR_URL,
+            "ingestor_service_status": "error",
+            "error": str(e)
+        }
 
 # --- VIP Management API Endpoints ---
 @app.get("/vip-documents")
