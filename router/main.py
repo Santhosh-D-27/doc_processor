@@ -362,5 +362,11 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
+<<<<<<< HEAD
         print(f' [!] Critical error: {e}')
         exit(1)
+=======
+        print(f'💥 Critical router error: {e}')
+        exit(1)
+        
+>>>>>>> 508153ac1d6fd101c21412c520e4df73092f84b8
