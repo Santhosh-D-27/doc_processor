@@ -120,7 +120,7 @@ class SimpleConnectionManager:
 connection_manager = SimpleConnectionManager(RABBITMQ_HOST)
 
 # Core Functions
-def publish_status_update(doc_id: str, status: str, details: dict = None, priority_score: int = None, priority_reason: str = None):
+def publish_status_update(doc_id: str, status: str, details: dict = None, priority_score: int = None, priority_reason: str = None, filename:str=None):
     if details is None:
         details = {}
     if priority_score is not None:
@@ -129,7 +129,11 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, priori
         details['priority_reason'] = priority_reason
     
     message = {
-        "document_id": doc_id, "status": status, "timestamp": datetime.now(UTC).isoformat(), "details": details
+        "document_id": doc_id, 
+        "filename": filename,  # ADD THIS
+        "status": status, 
+        "last_updated": datetime.now(UTC).isoformat(),  # CHANGE from "timestamp"
+        "details": details
     }
     
     connection = connection_manager.get_connection()
@@ -142,22 +146,53 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, priori
         except Exception:
             pass
 
-def extract_text_from_document(content_bytes: bytes, content_type: str, filename: str) -> str:
+def extract_text_from_document(content_bytes: bytes, content_type: str, filename: str, override_params: dict = None) -> str:
     if not content_bytes:
         raise ValueError("Empty document content")
+    
+    # Handle override parameters
+    if override_params is None:
+        override_params = {}
+    
+    ocr_engine = override_params.get('ocr_engine', 'default')
+    dpi = override_params.get('dpi', 300)
+    language = override_params.get('language', 'eng')
+    manual_text = override_params.get('manual_text')
+    
+    # If manual text is provided, use it directly
+    if manual_text and manual_text.strip():
+        return manual_text.strip()
     
     file_extension = os.path.splitext(filename)[1].lower()
     
     if 'pdf' in content_type or file_extension == '.pdf':
         poppler_path = os.getenv("POPPLER_PATH")
         convert_kwargs = {'poppler_path': poppler_path} if poppler_path and os.path.exists(poppler_path) else {}
+        
+        # Apply DPI override
+        if dpi != 300:
+            convert_kwargs['dpi'] = dpi
+        
         images = convert_from_bytes(content_bytes, **convert_kwargs)
-        text_parts = [pytesseract.image_to_string(image, config='--psm 6') for image in images]
+        
+        # Apply OCR engine and language overrides
+        if ocr_engine == 'tesseract':
+            text_parts = [pytesseract.image_to_string(image, config=f'--psm 6 -l {language}') for image in images]
+        else:
+            # Default OCR processing
+            text_parts = [pytesseract.image_to_string(image, config='--psm 6') for image in images]
+        
         text = '\n'.join(text_parts)
             
     elif 'image' in content_type or file_extension in ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']:
         image = Image.open(io.BytesIO(content_bytes))
-        text = pytesseract.image_to_string(image, config='--psm 6')
+        
+        # Apply OCR engine and language overrides
+        if ocr_engine == 'tesseract':
+            text = pytesseract.image_to_string(image, config=f'--psm 6 -l {language}')
+        else:
+            # Default OCR processing
+            text = pytesseract.image_to_string(image, config='--psm 6')
         
     elif 'vnd.openxmlformats-officedocument.wordprocessingml.document' in content_type or file_extension == '.docx':
         doc = docx.Document(io.BytesIO(content_bytes))
@@ -281,7 +316,10 @@ class PriorityProcessor:
             file_content_bytes = base64.b64decode(message['file_content'])
             content_type = message.get('content_type', 'application/octet-stream')
             
-            raw_text = extract_text_from_document(file_content_bytes, content_type, task.filename)
+            # Get override parameters if this is a manual re-extract
+            override_params = message.get('override_parameters', {})
+            
+            raw_text = extract_text_from_document(file_content_bytes, content_type, task.filename, override_params)
             processed_data = analyze_document_content_with_llm(raw_text, priority_score)
             
             processing_time = time.time() - start_time
@@ -362,14 +400,28 @@ class PriorityQueueConsumer:
                 self.send_to_classifier(classifier_message)
                 publish_status_update(
                     doc_id=result.document_id, status="Extracted",
-                    details={"chars_extracted": len(result.extracted_text), "processing_time": result.processing_time},
+                    filename=result.filename,
+                    details={
+                        "extracted_text": result.extracted_text,  # Add the actual extracted text
+                        "chars_extracted": len(result.extracted_text), 
+                        "processing_time": result.processing_time,
+                        "queue_processed_from": self.queue_name,
+                        # Include override information if this was a manual re-extract
+                        "is_manual_override": bool(task.message.get('override_parameters')),
+                        "override_parameters": task.message.get('override_parameters', {})
+                    },
                     priority_score=task.message.get('priority_score'),
                     priority_reason=task.message.get('priority_reason')
                 )
             else:
                 publish_status_update(
                     doc_id=result.document_id, status="Extraction Failed",
-                    details={"error": result.error},
+                    filename=result.filename,
+                    details={
+                        "error": result.error,
+                        "processing_time": result.processing_time,
+                        "queue_processed_from": self.queue_name
+                    },
                     priority_score=task.message.get('priority_score'),
                     priority_reason=task.message.get('priority_reason')
                 )

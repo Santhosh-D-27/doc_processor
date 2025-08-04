@@ -9,3 +9,227 @@ body {
   background-size: 20px 20px;
   color: #e5e7eb;
 }
+
+/* Custom utilities for better responsive design */
+@layer utilities {
+  /* Line clamping for text truncation */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  
+  /* Better text truncation */
+  .text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  /* Responsive text sizing */
+  .text-responsive-xs {
+    font-size: 0.75rem; /* 12px */
+  }
+  
+  .text-responsive-sm {
+    font-size: 0.875rem; /* 14px */
+  }
+  
+  .text-responsive-base {
+    font-size: 1rem; /* 16px */
+  }
+  
+  .text-responsive-lg {
+    font-size: 1.125rem; /* 18px */
+  }
+  
+  .text-responsive-xl {
+    font-size: 1.25rem; /* 20px */
+  }
+  
+  /* Responsive padding */
+  .p-responsive {
+    padding: 0.5rem;
+  }
+  
+  @media (min-width: 640px) {
+    .p-responsive {
+      padding: 1rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .p-responsive {
+      padding: 1.5rem;
+    }
+  }
+  
+  /* Better table responsiveness */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Custom scrollbar for better mobile experience */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #1f2937;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+  
+  /* Better focus states for accessibility */
+  .focus-visible-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900;
+  }
+  
+  /* Responsive grid layouts */
+  .grid-responsive {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .grid-responsive {
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+  }
+  
+  /* Better mobile touch targets */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Responsive spacing */
+  .space-responsive > * + * {
+    margin-top: 0.5rem;
+  }
+  
+  @media (min-width: 640px) {
+    .space-responsive > * + * {
+      margin-top: 1rem;
+    }
+  }
+  
+  /* Better mobile navigation */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-50;
+  }
+  
+  @media (min-width: 1024px) {
+    .mobile-nav {
+      @apply static bg-transparent border-t-0;
+    }
+  }
+  
+  /* Table optimization for 100% zoom */
+  .table-fixed {
+    table-layout: fixed;
+  }
+  
+  .table-fixed th,
+  .table-fixed td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* VIP indicator optimization */
+  .vip-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  
+  .vip-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    line-height: 1;
+  }
+  
+  .vip-level {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+  
+  /* Ensure buttons don't overflow */
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+  
+  .action-buttons.flex-col {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .action-button {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    white-space: nowrap;
+    transition: all 0.2s ease-in-out;
+    width: 100%;
+    min-width: 120px;
+  }
+  
+  /* Optimize for 100% zoom */
+  @media screen and (min-resolution: 96dpi) {
+    .table-fixed th,
+    .table-fixed td {
+      padding: 0.75rem 1rem;
+    }
+    
+    .vip-badge {
+      padding: 0.5rem 1rem;
+      font-size: 0.8125rem;
+    }
+    
+    .action-button {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9375rem;
+    }
+  }
+}

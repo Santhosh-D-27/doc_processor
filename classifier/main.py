@@ -211,7 +211,7 @@ connection_pool = RabbitMQConnectionPool(RABBITMQ_HOST)
 
 def publish_status_update(doc_id: str, status: str, details: dict = None, doc_type: str = None, 
                          confidence: float = None, is_vip: bool = False, vip_level: str = None,
-                         priority_score: int = None, priority_reason: str = None):
+                         priority_score: int = None, priority_reason: str = None, summary: str = None, filename: str = None):
     if details is None:
         details = {}
     
@@ -221,9 +221,16 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, doc_ty
         details['priority_reason'] = priority_reason
     
     status_message = {
-        "document_id": doc_id, "status": status, "timestamp": datetime.now(UTC).isoformat(),
-        "details": details, "doc_type": doc_type, "confidence": confidence,
-        "is_vip": is_vip, "vip_level": vip_level
+        "document_id": doc_id, 
+        "filename": filename,  # ADD THIS
+        "status": status, 
+        "last_updated": datetime.now(UTC).isoformat(),  # CHANGE from "timestamp"
+        "details": details, 
+        "doc_type": doc_type, 
+        "confidence": confidence,
+        "is_vip": is_vip, 
+        "vip_level": vip_level, 
+        "summary": summary
     }
     
     connection = None
@@ -521,6 +528,12 @@ class PriorityClassificationProcessor:
             sender = message.get('sender', 'N/A')
             priority_content = message.get('priority_content', {})
             
+            # Check for override parameters
+            override_params = message.get('override_parameters', {})
+            force_classification = override_params.get('force_classification', False)
+            manual_type_hint = override_params.get('manual_type_hint')
+            custom_threshold = override_params.get('confidence_threshold')
+            
             is_vip, vip_level = determine_vip_status(sender, extracted_text, priority_content, task.priority_score)
             
             classification_result = hybrid_classify(extracted_text, task.priority_score)
@@ -529,15 +542,23 @@ class PriorityClassificationProcessor:
             
             VALID_TYPES = ['REPORT', 'RESUME', 'MEMO', 'INVOICE', 'AGREEMENT', 'CONTRACT', 'GRIEVANCE', 'ID_PROOF']
             
-            # Priority-based confidence thresholds
-            if task.priority_score >= Priority.CRITICAL:
+            # Use custom threshold if provided in override
+            if custom_threshold is not None:
+                min_confidence = custom_threshold
+            elif task.priority_score >= Priority.CRITICAL:
                 min_confidence = 0.90
             elif task.priority_score >= Priority.HIGH or is_vip:
                 min_confidence = 0.85
             else:
                 min_confidence = 0.75
             
-            if doc_type not in VALID_TYPES or doc_type in ['UNKNOWN', 'LLM_ERROR'] or confidence < min_confidence:
+            # Handle manual type hint
+            if manual_type_hint and manual_type_hint in VALID_TYPES:
+                doc_type = manual_type_hint
+                confidence = 1.0  # Full confidence for manual override
+            
+            # Allow force classification to bypass thresholds
+            if not force_classification and (doc_type not in VALID_TYPES or doc_type in ['UNKNOWN', 'LLM_ERROR'] or confidence < min_confidence):
                 doc_type = "HUMAN_REVIEW_NEEDED"
                 confidence = 0.0
             
@@ -640,7 +661,9 @@ class PriorityClassificationService:
                         publish_status_update(
                             doc_id=result.document_id, status="Classified", doc_type=result.doc_type,
                             confidence=result.confidence, is_vip=result.is_vip, vip_level=result.vip_level,
+                            filename=result.filename,
                             priority_score=task.priority_score, priority_reason=task.priority_reason,
+                            summary=task.message.get('summary', 'No summary available'),
                             details={"processing_time": result.processing_time}
                         )
                     except Exception as ack_error:
@@ -658,7 +681,9 @@ class PriorityClassificationService:
                     ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
                     publish_status_update(
                         doc_id=result.document_id, status="Classification Failed",
+                        filename=result.filename,
                         priority_score=task.priority_score, priority_reason=task.priority_reason,
+                        summary=task.message.get('summary', 'No summary available'),
                         details={"error": result.error, "processing_time": result.processing_time}
                     )
                 except:
@@ -729,14 +754,18 @@ class PriorityClassificationService:
                 self.send_to_router(router_message)
                 publish_status_update(
                     doc_id=result.document_id, status="Classified", doc_type=result.doc_type,
+                    filename=result.filename,
                     confidence=result.confidence, is_vip=result.is_vip, vip_level=result.vip_level,
                     priority_score=task.priority_score, priority_reason=task.priority_reason,
+                    summary=task.message.get('summary', 'No summary available'),
                     details={"processing_time": result.processing_time}
                 )
             else:
                 publish_status_update(
                     doc_id=result.document_id, status="Classification Failed",
+                    filename=result.filename,
                     priority_score=task.priority_score, priority_reason=task.priority_reason,
+                    summary=task.message.get('summary', 'No summary available'),
                     details={"error": result.error, "processing_time": result.processing_time}
                 )
                 

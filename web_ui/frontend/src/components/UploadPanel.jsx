@@ -54,12 +54,12 @@ const UploadPanel = () => {
   });
 
   return (
-    <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
-      <h2 className="text-2xl font-bold text-gray-100 mb-6">Upload Document</h2>
+    <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-4 sm:p-6">
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-100 mb-4 sm:mb-6">Upload Document</h2>
       
       <div 
         {...getRootProps()} 
-        className="p-10 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors duration-300 border-gray-600 hover:border-gray-400"
+        className="p-6 sm:p-8 lg:p-10 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors duration-300 border-gray-600 hover:border-gray-400"
         style={{
           borderColor: isDragActive ? '#14b8a6' : '#4b5563',
           backgroundColor: isDragActive ? 'rgba(6, 95, 70, 0.5)' : 'transparent'
@@ -68,13 +68,13 @@ const UploadPanel = () => {
         <input {...getInputProps()} />
         
         <div className="space-y-2">
-          <div className="text-4xl mb-4">📁</div>
+          <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">📁</div>
           {isDragActive ? (
-            <p className="text-lg text-teal-300">Drop the file here...</p>
+            <p className="text-base sm:text-lg text-teal-300">Drop the file here...</p>
           ) : (
             <div>
-              <p className="text-lg mb-2">Drop a document here, or click to select</p>
-              <p className="text-sm text-gray-400">Supports: PDF, DOCX, TXT, JPG, PNG</p>
+              <p className="text-base sm:text-lg mb-2">Drop a document here, or click to select</p>
+              <p className="text-xs sm:text-sm text-gray-400">Supports: PDF, DOCX, TXT, JPG, PNG</p>
             </div>
           )}
         </div>
@@ -82,7 +82,7 @@ const UploadPanel = () => {
       
       {uploadStatus && (
         <div className="mt-4 p-3 bg-gray-700 rounded-lg">
-          <p className="text-sm text-white">{uploadStatus}</p>
+          <p className="text-xs sm:text-sm text-white break-words">{uploadStatus}</p>
         </div>
       )}
     </div>

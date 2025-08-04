@@ -35,6 +35,27 @@ class VIPDocumentUpdate(BaseModel):
     status: str
     risk_assessment: Optional[str] = None
 
+# Manual Override Models
+class ReExtractRequest(BaseModel):
+    ocr_engine: Optional[str] = "default"  # default, tesseract, easyocr
+    dpi: Optional[int] = 300
+    language: Optional[str] = "eng"
+    manual_text: Optional[str] = None
+    preprocessing: Optional[dict] = None
+    reason: Optional[str] = "Manual override"
+
+class ReClassifyRequest(BaseModel):
+    manual_type_hint: Optional[str] = None
+    confidence_threshold: Optional[float] = 0.75
+    force_classification: Optional[bool] = False
+    reason: Optional[str] = "Manual override"
+
+class ReRouteRequest(BaseModel):
+    destination: str
+    test_mode: Optional[bool] = False
+    schedule_delivery: Optional[str] = None  # ISO datetime string
+    reason: Optional[str] = "Manual override"
+
 # --- Database Setup ---
 def setup_database():
     conn = sqlite3.connect(DB_NAME)
@@ -52,9 +73,32 @@ def setup_database():
             is_vip BOOLEAN DEFAULT 0,
             vip_level TEXT DEFAULT 'NONE',
             summary TEXT,
-            priority_content TEXT
+            priority_content TEXT,
+            routing_destination TEXT,
+            override_in_progress BOOLEAN DEFAULT 0,
+            override_type TEXT DEFAULT NULL
         )
     ''')
+    
+    # Check if routing_destination column exists, if not add it
+    cursor.execute("PRAGMA table_info(document_status)")
+    columns = [column[1] for column in cursor.fetchall()]
+    
+    if 'routing_destination' not in columns:
+        print("[DB] Adding routing_destination column to document_status table...")
+        cursor.execute('ALTER TABLE document_status ADD COLUMN routing_destination TEXT')
+        print("[DB] routing_destination column added successfully.")
+    
+    # Add override tracking columns if they don't exist
+    if 'override_in_progress' not in columns:
+        print("[DB] Adding override_in_progress column to document_status table...")
+        cursor.execute('ALTER TABLE document_status ADD COLUMN override_in_progress BOOLEAN DEFAULT 0')
+        print("[DB] override_in_progress column added successfully.")
+    
+    if 'override_type' not in columns:
+        print("[DB] Adding override_type column to document_status table...")
+        cursor.execute('ALTER TABLE document_status ADD COLUMN override_type TEXT DEFAULT NULL')
+        print("[DB] override_type column added successfully.")
     
     # Enhanced document_history table
     cursor.execute('''
@@ -72,6 +116,37 @@ def setup_database():
             summary TEXT,
             priority_content TEXT,
             FOREIGN KEY (document_id) REFERENCES document_status (document_id)
+        )
+    ''')
+    
+    # Manual Override Audit Trail Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS override_audit_trail (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_id TEXT NOT NULL,
+            override_type TEXT NOT NULL,  -- re-extract, re-classify, re-route
+            user_id TEXT DEFAULT 'operator',
+            timestamp TEXT NOT NULL,
+            reason TEXT,
+            parameters TEXT,  -- JSON string of override parameters
+            original_state TEXT,  -- JSON string of original document state
+            new_state TEXT,  -- JSON string of new document state
+            success BOOLEAN DEFAULT 1,
+            error_message TEXT,
+            FOREIGN KEY (document_id) REFERENCES document_status (document_id)
+        )
+    ''')
+    
+    # Override Options Table for storing available options
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS override_options (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            option_type TEXT NOT NULL,  -- ocr_engine, doc_type, routing_destination
+            option_value TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            is_active BOOLEAN DEFAULT 1,
+            priority INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL
         )
     ''')
     
@@ -133,22 +208,304 @@ def setup_database():
         )
     ''')
 
+    # Insert default override options
+    cursor.execute('''
+        INSERT OR IGNORE INTO override_options (option_type, option_value, display_name, priority, created_at)
+        VALUES 
+        ('ocr_engine', 'default', 'Default OCR Engine', 1, ?),
+        ('ocr_engine', 'tesseract', 'Tesseract OCR', 2, ?),
+        ('ocr_engine', 'easyocr', 'EasyOCR Engine', 3, ?),
+        ('doc_type', 'INVOICE', 'Invoice', 1, ?),
+        ('doc_type', 'RESUME', 'Resume', 2, ?),
+        ('doc_type', 'CONTRACT', 'Contract', 3, ?),
+        ('doc_type', 'REPORT', 'Report', 4, ?),
+        ('doc_type', 'MEMO', 'Memo', 5, ?),
+        ('doc_type', 'AGREEMENT', 'Agreement', 6, ?),
+        ('doc_type', 'GRIEVANCE', 'Grievance', 7, ?),
+        ('doc_type', 'ID_PROOF', 'ID Proof', 8, ?),
+        ('routing_destination', 'erp_system', 'ERP System', 1, ?),
+        ('routing_destination', 'dms_system', 'Document Management System', 2, ?),
+        ('routing_destination', 'crm_system', 'CRM System', 3, ?)
+    ''', [datetime.now(UTC).isoformat()] * 14)
+
     conn.commit()
     conn.close()
-    print("[DB] Database tables checked/created.")
+    print("[DB] Database tables checked/created with override support.")
+
+def run_database_migrations():
+    """Run database migrations to ensure all required columns exist"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    try:
+        # Check if document_status table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='document_status'")
+        if cursor.fetchone():
+            # Check if routing_destination column exists
+            cursor.execute("PRAGMA table_info(document_status)")
+            columns = [column[1] for column in cursor.fetchall()]
+            
+            if 'routing_destination' not in columns:
+                print("[DB Migration] Adding routing_destination column to document_status table...")
+                cursor.execute('ALTER TABLE document_status ADD COLUMN routing_destination TEXT')
+                print("[DB Migration] routing_destination column added successfully.")
+            
+            if 'override_in_progress' not in columns:
+                print("[DB Migration] Adding override_in_progress column to document_status table...")
+                cursor.execute('ALTER TABLE document_status ADD COLUMN override_in_progress BOOLEAN DEFAULT 0')
+                print("[DB Migration] override_in_progress column added successfully.")
+            
+            if 'override_type' not in columns:
+                print("[DB Migration] Adding override_type column to document_status table...")
+                cursor.execute('ALTER TABLE document_status ADD COLUMN override_type TEXT DEFAULT NULL')
+                print("[DB Migration] override_type column added successfully.")
+        
+        # Create override audit trail table if it doesn't exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='override_audit_trail'")
+        if not cursor.fetchone():
+            print("[DB Migration] Creating override_audit_trail table...")
+            cursor.execute('''
+                CREATE TABLE override_audit_trail (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    document_id TEXT NOT NULL,
+                    override_type TEXT NOT NULL,
+                    user_id TEXT DEFAULT 'operator',
+                    timestamp TEXT NOT NULL,
+                    reason TEXT,
+                    parameters TEXT,
+                    original_state TEXT,
+                    new_state TEXT,
+                    success BOOLEAN DEFAULT 1,
+                    error_message TEXT,
+                    FOREIGN KEY (document_id) REFERENCES document_status (document_id)
+                )
+            ''')
+            print("[DB Migration] override_audit_trail table created successfully.")
+        
+        # Create override options table if it doesn't exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='override_options'")
+        if not cursor.fetchone():
+            print("[DB Migration] Creating override_options table...")
+            cursor.execute('''
+                CREATE TABLE override_options (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    option_type TEXT NOT NULL,
+                    option_value TEXT NOT NULL,
+                    display_name TEXT NOT NULL,
+                    is_active BOOLEAN DEFAULT 1,
+                    priority INTEGER DEFAULT 0,
+                    created_at TEXT NOT NULL
+                )
+            ''')
+            
+            # Insert default override options
+            cursor.execute('''
+                INSERT INTO override_options (option_type, option_value, display_name, priority, created_at)
+                VALUES 
+                ('ocr_engine', 'default', 'Default OCR Engine', 1, ?),
+                ('ocr_engine', 'tesseract', 'Tesseract OCR', 2, ?),
+                ('ocr_engine', 'easyocr', 'EasyOCR Engine', 3, ?),
+                ('doc_type', 'INVOICE', 'Invoice', 1, ?),
+                ('doc_type', 'RESUME', 'Resume', 2, ?),
+                ('doc_type', 'CONTRACT', 'Contract', 3, ?),
+                ('doc_type', 'REPORT', 'Report', 4, ?),
+                ('doc_type', 'MEMO', 'Memo', 5, ?),
+                ('doc_type', 'AGREEMENT', 'Agreement', 6, ?),
+                ('doc_type', 'GRIEVANCE', 'Grievance', 7, ?),
+                ('doc_type', 'ID_PROOF', 'ID Proof', 8, ?),
+                ('routing_destination', 'erp_system', 'ERP System', 1, ?),
+                ('routing_destination', 'dms_system', 'Document Management System', 2, ?),
+                ('routing_destination', 'crm_system', 'CRM System', 3, ?)
+            ''', [datetime.now(UTC).isoformat()] * 14)
+            print("[DB Migration] override_options table created with default options.")
+        
+        conn.commit()
+    except Exception as e:
+        print(f"[DB Migration] Error during migration: {e}")
+    finally:
+        conn.close()
+
+# --- Helper Functions for Override Management ---
+def log_override_audit(document_id: str, override_type: str, parameters: dict, 
+                      original_state: dict, new_state: dict = None, 
+                      success: bool = True, error_message: str = None, user_id: str = "operator"):
+    """Log override actions to audit trail"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO override_audit_trail 
+            (document_id, override_type, user_id, timestamp, reason, parameters, 
+             original_state, new_state, success, error_message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            document_id, override_type, user_id, datetime.now(UTC).isoformat(),
+            parameters.get('reason', 'Manual override'),
+            json.dumps(parameters),
+            json.dumps(original_state),
+            json.dumps(new_state) if new_state else None,
+            success,
+            error_message
+        ))
+        
+        conn.commit()
+        conn.close()
+        print(f"[Audit] Logged {override_type} override for {document_id}")
+    except Exception as e:
+        print(f"[Audit Error] Failed to log override: {e}")
+
+def set_override_status(document_id: str, override_type: str, in_progress: bool = True):
+    """Set override status for a document"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE document_status 
+            SET override_in_progress = ?, override_type = ?
+            WHERE document_id = ?
+        ''', (in_progress, override_type if in_progress else None, document_id))
+        
+        conn.commit()
+        conn.close()
+        print(f"[Override] Set {override_type} status to {in_progress} for {document_id}")
+    except Exception as e:
+        print(f"[Override Error] Failed to set override status: {e}")
+
+def get_override_options(option_type: str = None):
+    """Get available override options"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        if option_type:
+            cursor.execute('''
+                SELECT option_type, option_value, display_name, priority 
+                FROM override_options 
+                WHERE option_type = ? AND is_active = 1 
+                ORDER BY priority ASC
+            ''', (option_type,))
+        else:
+            cursor.execute('''
+                SELECT option_type, option_value, display_name, priority 
+                FROM override_options 
+                WHERE is_active = 1 
+                ORDER BY option_type, priority ASC
+            ''')
+        
+        options = cursor.fetchall()
+        conn.close()
+        
+        if option_type:
+            return [{"value": row['option_value'], "label": row['display_name']} for row in options]
+        else:
+            # Group by option_type
+            grouped = {}
+            for row in options:
+                if row['option_type'] not in grouped:
+                    grouped[row['option_type']] = []
+                grouped[row['option_type']].append({
+                    "value": row['option_value'], 
+                    "label": row['display_name']
+                })
+            return grouped
+    except Exception as e:
+        print(f"[Override Error] Failed to get override options: {e}")
+        return {}
+
+def get_override_audit_trail(document_id: str, limit: int = 10):
+    """Get audit trail for a document"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM override_audit_trail 
+            WHERE document_id = ? 
+            ORDER BY timestamp DESC 
+            LIMIT ?
+        ''', (document_id, limit))
+        
+        audit_entries = cursor.fetchall()
+        conn.close()
+        
+        # Parse JSON fields
+        parsed_entries = []
+        for entry in audit_entries:
+            entry_dict = dict(entry)
+            if entry_dict.get('parameters'):
+                try:
+                    entry_dict['parameters'] = json.loads(entry_dict['parameters'])
+                except:
+                    entry_dict['parameters'] = {}
+            if entry_dict.get('original_state'):
+                try:
+                    entry_dict['original_state'] = json.loads(entry_dict['original_state'])
+                except:
+                    entry_dict['original_state'] = {}
+            if entry_dict.get('new_state'):
+                try:
+                    entry_dict['new_state'] = json.loads(entry_dict['new_state'])
+                except:
+                    entry_dict['new_state'] = {}
+            parsed_entries.append(entry_dict)
+        
+        return parsed_entries
+    except Exception as e:
+        print(f"[Audit Error] Failed to get audit trail: {e}")
+        return []
 
 # --- WebSocket Connection Manager ---
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self.message_queue = []
+        self.broadcast_task = None
+    
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        print(f"[WebSocket] Client connected. Total connections: {len(self.active_connections)}")
+    
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
+        print(f"[WebSocket] Client disconnected. Total connections: {len(self.active_connections)}")
+    
+    def queue_broadcast(self, message: str):
+        """Queue a message for broadcast (thread-safe)"""
+        self.message_queue.append(message)
+        print(f"[WebSocket] Queued message for broadcast. Queue size: {len(self.message_queue)}")
+    
     async def broadcast(self, message: str):
+        """Broadcast message to all connected clients"""
+        if not self.active_connections:
+            print("[WebSocket] No active connections to broadcast to")
+            return
+        
+        disconnected = []
         for connection in self.active_connections:
-            await connection.send_text(message)
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                print(f"[WebSocket] Error sending to client: {e}")
+                disconnected.append(connection)
+        
+        # Remove disconnected clients
+        for connection in disconnected:
+            self.active_connections.remove(connection)
+        
+        print(f"[WebSocket] Broadcasted to {len(self.active_connections)} clients")
+    
+    async def process_queue(self):
+        """Process queued messages (runs in main event loop)"""
+        while True:
+            if self.message_queue:
+                message = self.message_queue.pop(0)
+                await self.broadcast(message)
+            await asyncio.sleep(0.1)  # Small delay to prevent busy waiting
 
 manager = ConnectionManager()
 
@@ -163,90 +520,91 @@ def consume_status_updates():
             print("[Consumer] Waiting for status messages.")
 
             def callback(ch, method, properties, body):
-                message = json.loads(body)
-                doc_id = message.get("document_id")
-                status = message.get("status")
-                timestamp = message.get("timestamp")
-                
-                doc_type = message.get("doc_type")
-                confidence = message.get("confidence")
-                is_vip = message.get("is_vip", False)
-                vip_level = message.get("vip_level", "NONE")
-                summary = message.get("summary")
-                priority_content = message.get("priority_content")
-
                 try:
+                    message = json.loads(body)
+                    doc_id = message.get("document_id")
+
+                    if not doc_id:
+                        ch.basic_ack(delivery_tag=method.delivery_tag)
+                        return
+
                     conn = sqlite3.connect(DB_NAME)
-                    cursor = conn.cursor()
-
-                    # Insert into history table
-                    cursor.execute("""
-                        INSERT INTO document_history 
-                        (document_id, status, timestamp, details, doc_type, confidence, file_content_encoded, is_vip, vip_level, summary, priority_content)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        doc_id, status, timestamp,
-                        json.dumps(message.get("details", {})),
-                        doc_type, confidence,
-                        message.get("details", {}).get("file_content_encoded"),
-                        is_vip, vip_level, summary, json.dumps(priority_content)
-                    ))
-                    
-                    # Get existing data for filename to prevent it from becoming NULL
-                    cursor.execute("SELECT filename FROM document_status WHERE document_id = ?", (doc_id,))
-                    existing_filename = cursor.fetchone()
-                    filename_to_use = message.get("details", {}).get("filename", existing_filename[0] if existing_filename else "Unknown_File")
-
-                    # Update (or insert) the main document_status table
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO document_status 
-                        (document_id, filename, status, doc_type, confidence, last_updated, is_vip, vip_level, summary, priority_content)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        doc_id,
-                        filename_to_use,
-                        status,
-                        doc_type,
-                        confidence,
-                        timestamp,
-                        is_vip,
-                        vip_level,
-                        summary,
-                        json.dumps(priority_content)
-                    ))
-
-                    # If it's a VIP document and Routed, add/update vip_documents table
-                    if is_vip and status == "Routed":
-                        sender = message.get("details", {}).get("sender", "N/A")
-                        cursor.execute("""
-                            INSERT OR REPLACE INTO vip_documents
-                            (document_id, filename, vip_level, sender, summary, priority_content, status, last_updated)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            doc_id,
-                            filename_to_use,
-                            vip_level,
-                            sender,
-                            summary,
-                            json.dumps(priority_content),
-                            "Routed",
-                            datetime.now(UTC).isoformat()
-                        ))
-                    
-                    conn.commit()
-                    
                     conn.row_factory = sqlite3.Row
                     cursor = conn.cursor()
+
+                    # 1. Fetch the current state of the document
                     cursor.execute("SELECT * FROM document_status WHERE document_id = ?", (doc_id,))
-                    updated_doc = dict(cursor.fetchone())
+                    current_doc_data = cursor.fetchone()
+                    doc_data = dict(current_doc_data) if current_doc_data else {}
+                    
+                    # 2. Smartly update the dictionary with new, non-null values from the message
+                    for key, value in message.items():
+                        if value is not None:
+                            if key == "details" and isinstance(value, dict):
+                                doc_data[key] = {**(doc_data.get(key) or {}), **value}
+                            else:
+                                doc_data[key] = value
+
+                    doc_data.setdefault('document_id', doc_id)
+                    doc_data.setdefault('filename', 'Unknown File')
+                    doc_data['last_updated'] = message.get("timestamp", datetime.now(UTC).isoformat())
+
+                    # 3. Write the merged data back to the main status table
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO document_status 
+                        (document_id, filename, status, doc_type, confidence, last_updated, is_vip, vip_level, summary, priority_content, routing_destination, override_in_progress, override_type)
+                        VALUES (:document_id, :filename, :status, :doc_type, :confidence, :last_updated, :is_vip, :vip_level, :summary, :priority_content, :routing_destination, :override_in_progress, :override_type)
+                    """, {
+                        "document_id": doc_data.get('document_id'),
+                        "filename": doc_data.get('filename'),
+                        "status": doc_data.get('status'),
+                        "doc_type": doc_data.get('doc_type'),
+                        "confidence": doc_data.get('confidence'),
+                        "last_updated": doc_data.get('last_updated'),
+                        "is_vip": doc_data.get('is_vip', False),
+                        "vip_level": doc_data.get('vip_level', "NONE"),
+                        "summary": doc_data.get('summary'),
+                        "priority_content": json.dumps(doc_data.get('priority_content')) if doc_data.get('priority_content') else None,
+                        "routing_destination": message.get('routing_destination') or doc_data.get('routing_destination'),
+                        "override_in_progress": False,  # Clear override flag when processing is complete
+                        "override_type": None  # Clear override type when processing is complete
+                    })
+
+                    # 4. **[THE FIX]** Insert the COMPLETE record into the history table
+                    cursor.execute("""
+                        INSERT INTO document_history
+                        (document_id, status, timestamp, details, doc_type, confidence, summary, is_vip, vip_level, priority_content, file_content_encoded)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        doc_id,
+                        message.get('status'),
+                        message.get('timestamp'),
+                        json.dumps(message.get('details', {})),
+                        message.get('doc_type'),
+                        message.get('confidence'),
+                        message.get('summary'),
+                        message.get('is_vip', False),
+                        message.get('vip_level', "NONE"),
+                        json.dumps(message.get('priority_content')) if message.get('priority_content') else None,
+                        message.get('details', {}).get('file_content_encoded') # This line is critical
+                    ))
+
+                    conn.commit()
+                    
+                    # Broadcast the fully updated document state
+                    cursor.execute("SELECT * FROM document_status WHERE document_id = ?", (doc_id,))
+                    updated_doc_for_broadcast = dict(cursor.fetchone())
                     
                     conn.close()
                     
-                    asyncio.run(manager.broadcast(json.dumps(updated_doc)))
+                    # Queue the message for WebSocket broadcast (thread-safe)
+                    manager.queue_broadcast(json.dumps(updated_doc_for_broadcast))
+                    
                     ch.basic_ack(delivery_tag=method.delivery_tag)
 
                 except Exception as e:
-                    print(f"[Consumer DB Error] Failed to save status for {doc_id}: {e}")
+                    print(f"[Consumer DB Error] Failed to process message: {e}")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
 
             channel.basic_consume(queue=STATUS_QUEUE_NAME, on_message_callback=callback)
             channel.start_consuming()
@@ -261,9 +619,20 @@ def consume_status_updates():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_database()
+    run_database_migrations()  # Run migrations to ensure all columns exist
+    
+    # Start the RabbitMQ consumer thread
     consumer_thread = threading.Thread(target=consume_status_updates, daemon=True)
     consumer_thread.start()
+    
+    # Start the WebSocket message queue processor
+    manager.broadcast_task = asyncio.create_task(manager.process_queue())
+    
     yield
+    
+    # Cleanup
+    if manager.broadcast_task:
+        manager.broadcast_task.cancel()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -294,16 +663,25 @@ def get_document_history(document_id: str):
     cursor.execute("SELECT * FROM document_history WHERE document_id = ? ORDER BY timestamp ASC", (document_id,))
     history = cursor.fetchall()
     conn.close()
+    
+    # Return empty array instead of raising exception when no history found
     if not history:
-        raise HTTPException(status_code=404, detail="History not found")
+        return []
+    
     # Parse JSON strings back to dicts for details and priority_content
     parsed_history = []
     for row in history:
         row_dict = dict(row)
         if row_dict.get('details'):
-            row_dict['details'] = json.loads(row_dict['details'])
+            try:
+                row_dict['details'] = json.loads(row_dict['details'])
+            except json.JSONDecodeError:
+                row_dict['details'] = {}
         if row_dict.get('priority_content'):
-            row_dict['priority_content'] = json.loads(row_dict['priority_content'])
+            try:
+                row_dict['priority_content'] = json.loads(row_dict['priority_content'])
+            except json.JSONDecodeError:
+                row_dict['priority_content'] = {}
         parsed_history.append(row_dict)
     return parsed_history
 
@@ -319,43 +697,147 @@ def get_doc_for_reprocessing(document_id: str):
     return dict(doc)
 
 @app.post("/re-classify/{document_id}")
-def re_classify_document(document_id: str):
-    doc = get_doc_for_reprocessing(document_id)
-    history_events = get_document_history(document_id)
+def re_classify_document(document_id: str, request: ReClassifyRequest = None):
+    print(f"[API] Received request to re-classify document: {document_id}")
     
-    extracted_details = {}
-    extracted_summary = ""
-    extracted_priority_content = {}
-    extracted_entities = {}
-
-    for event in reversed(history_events):
-        if event['status'] == 'Extracted':
-            extracted_details = event.get('details', {})
-            extracted_summary = event.get('summary', '')
-            extracted_priority_content = event.get('priority_content', {})
-            extracted_entities = extracted_details.get('entities', {})
-            break
-
-    message = {
-        'document_id': doc['document_id'],
-        'filename': doc['filename'],
-        'extracted_text': extracted_details.get('extracted_text', ''),
-        'summary': extracted_summary,
-        'priority_content': extracted_priority_content,
-        'entities': extracted_entities
-    }
+    if request is None:
+        request = ReClassifyRequest()
     
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.queue_declare(queue='classification_queue', durable=True)
-    channel.basic_publish(exchange='', routing_key='classification_queue', body=json.dumps(message))
-    connection.close()
-    return {"status": "success"}
+    try:
+        # Get current document state
+        doc = get_doc_for_reprocessing(document_id)
+        history_events = get_document_history(document_id)
+        
+        # Store original state for audit trail
+        original_state = {
+            'doc_type': doc.get('doc_type'),
+            'confidence': doc.get('confidence'),
+            'status': doc.get('status')
+        }
+        
+        # Set override status
+        set_override_status(document_id, 're-classify', True)
+        
+        # Find the most recent 'Extracted' event to get the extracted text
+        extracted_event = None
+        for event in reversed(history_events):
+            if event['status'] == 'Extracted':
+                extracted_event = event
+                break
+        
+        if not extracted_event:
+            error_msg = "No extraction record found for this document."
+            log_override_audit(document_id, 're-classify', request.dict(), original_state, 
+                             success=False, error_message=error_msg)
+            set_override_status(document_id, 're-classify', False)
+            raise HTTPException(status_code=404, detail=error_msg)
+        
+        # Get extracted text from the details
+        extracted_details = extracted_event.get('details', {})
+        extracted_text = extracted_details.get('extracted_text', '')
+        
+        if not extracted_text:
+            error_msg = "No extracted text found for this document."
+            log_override_audit(document_id, 're-classify', request.dict(), original_state, 
+                             success=False, error_message=error_msg)
+            set_override_status(document_id, 're-classify', False)
+            raise HTTPException(status_code=404, detail=error_msg)
+        
+        # Get sender information from the original ingestion event
+        sender = 'N/A'
+        for event in history_events:
+            if event['status'] == 'Ingested':
+                ingested_details = event.get('details', {})
+                sender = ingested_details.get('sender', 'N/A')
+                break
+        
+        # Get priority content and summary from the extracted event
+        priority_content = extracted_event.get('priority_content', {})
+        summary = extracted_event.get('summary', '')
+        
+        # Get entities if available
+        entities = extracted_details.get('entities', {})
+        
+        # Prepare the message for the classification queue with override parameters
+        message = {
+            'document_id': doc['document_id'],
+            'filename': doc['filename'],
+            'extracted_text': extracted_text,
+            'sender': sender,
+            'summary': summary,
+            'priority_content': priority_content,
+            'entities': entities,
+            'priority_score': 100,  # High priority for manual overrides
+            'priority_reason': 'Manual re-classification override',
+            # Override-specific parameters
+            'manual_type_hint': request.manual_type_hint,
+            'confidence_threshold': request.confidence_threshold,
+            'force_classification': request.force_classification,
+            'override_parameters': request.dict()
+        }
+        
+        print(f"[API] Sending enhanced re-classification message: {message['document_id']}")
+        
+        # Publish to classification queue with override event type
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        channel = connection.channel()
+        channel.queue_declare(queue='classification_queue', durable=True)
+        
+        # Add override metadata to message
+        override_metadata = {
+            'event_type': 'doc.reclassify.requested',
+            'override_timestamp': datetime.now(UTC).isoformat(),
+            'user_id': 'operator',
+            'reason': request.reason
+        }
+        message.update(override_metadata)
+        
+        channel.basic_publish(exchange='', routing_key='classification_queue', body=json.dumps(message))
+        connection.close()
+        
+        # Log successful override request
+        log_override_audit(document_id, 're-classify', request.dict(), original_state)
+        
+        print(f"[API] Successfully queued {document_id} for re-classification with override parameters.")
+        return {
+            "status": "success", 
+            "detail": f"Document {document_id} sent for re-classification with override parameters.",
+            "override_id": f"reclassify_{document_id}_{int(time.time())}"
+        }
+        
+    except HTTPException as http_exc:
+        set_override_status(document_id, 're-classify', False)
+        raise http_exc
+    except Exception as e:
+        set_override_status(document_id, 're-classify', False)
+        error_msg = f"Failed to re-classify {document_id}: {str(e)}"
+        log_override_audit(document_id, 're-classify', request.dict(), original_state, 
+                         success=False, error_message=error_msg)
+        print(f"[API Error] {error_msg}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/re-extract/{document_id}")
-def re_extract_document(document_id: str):
+def re_extract_document(document_id: str, request: ReExtractRequest = None):
     print(f"[API] Received request to re-extract document: {document_id}")
+    
+    if request is None:
+        request = ReExtractRequest()
+    
     try:
+        # Get current document state
+        doc = get_doc_for_reprocessing(document_id)
+        history_events = get_document_history(document_id)
+        
+        # Store original state for audit trail
+        original_state = {
+            'status': doc.get('status'),
+            'doc_type': doc.get('doc_type'),
+            'confidence': doc.get('confidence')
+        }
+        
+        # Set override status
+        set_override_status(document_id, 're-extract', True)
+        
         # Get the document's full history
         history_events = get_document_history(document_id)
         
@@ -363,49 +845,225 @@ def re_extract_document(document_id: str):
         ingested_event = next((event for event in history_events if event['status'] == 'Ingested'), None)
 
         if not ingested_event:
-            raise HTTPException(status_code=404, detail="Original ingestion record not found.")
+            error_msg = "Original ingestion record not found."
+            log_override_audit(document_id, 're-extract', request.dict(), original_state, 
+                             success=False, error_message=error_msg)
+            set_override_status(document_id, 're-extract', False)
+            raise HTTPException(status_code=404, detail=error_msg)
 
         # Get the encoded file content directly from the database record
         file_content_b64 = ingested_event.get('file_content_encoded')
         if not file_content_b64:
-            raise HTTPException(status_code=404, detail="Encoded file content not found in ingestion history.")
+            error_msg = "Encoded file content not found in ingestion history."
+            log_override_audit(document_id, 're-extract', request.dict(), original_state, 
+                             success=False, error_message=error_msg)
+            set_override_status(document_id, 're-extract', False)
+            raise HTTPException(status_code=404, detail=error_msg)
 
         # Get the original filename and sender from the 'details' JSON
         ingested_details = ingested_event.get('details', {})
         original_filename = ingested_details.get('filename')
         sender = ingested_details.get('sender')
         if not original_filename:
-             raise HTTPException(status_code=404, detail="Original filename not found in ingestion history.")
+            error_msg = "Original filename not found in ingestion history."
+            log_override_audit(document_id, 're-extract', request.dict(), original_state, 
+                             success=False, error_message=error_msg)
+            set_override_status(document_id, 're-extract', False)
+            raise HTTPException(status_code=404, detail=error_msg)
 
-        # Prepare the message for the extraction queue
+        # Prepare the message for the extraction queue with override parameters
         message_to_extractor = {
             'document_id': document_id,
             'filename': original_filename,
             'file_content': file_content_b64, 
-            'priority': 'high',
-            'source': 'manual_re-extract',
+            'priority': 'critical',  # High priority for manual overrides
+            'source': 'manual_re-extract_override',
             'content_type': ingested_details.get('content_type', 'application/octet-stream'),
-            'sender': sender
+            'sender': sender,
+            # Override-specific parameters
+            'ocr_engine': request.ocr_engine,
+            'dpi': request.dpi,
+            'language': request.language,
+            'manual_text': request.manual_text,
+            'preprocessing': request.preprocessing,
+            'override_parameters': request.dict()
         }
 
-        # Publish the message to RabbitMQ
+        # Publish the message to RabbitMQ with override event type
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
         channel = connection.channel()
         channel.queue_declare(queue='doc_received_medium', durable=True)
+        
+        # Add override metadata to message
+        override_metadata = {
+            'event_type': 'doc.reextract.requested',
+            'override_timestamp': datetime.now(UTC).isoformat(),
+            'user_id': 'operator',
+            'reason': request.reason
+        }
+        message_to_extractor.update(override_metadata)
+        
         channel.basic_publish(
             exchange='', 
-            routing_key='doc_received_medium',  # ✅ CORRECT QUEUE
+            routing_key='doc_received_medium',
             body=json.dumps(message_to_extractor)
         )
         connection.close()
         
-        print(f"[API] Successfully queued {document_id} for re-extraction.")
-        return {"status": "success", "detail": f"Document {document_id} sent for re-extraction."}
+        # Log successful override request
+        log_override_audit(document_id, 're-extract', request.dict(), original_state)
+        
+        print(f"[API] Successfully queued {document_id} for re-extraction with override parameters.")
+        return {
+            "status": "success", 
+            "detail": f"Document {document_id} sent for re-extraction with override parameters.",
+            "override_id": f"reextract_{document_id}_{int(time.time())}"
+        }
 
     except HTTPException as http_exc:
+        set_override_status(document_id, 're-extract', False)
         raise http_exc
     except Exception as e:
-        print(f"[API Error] Failed to re-extract {document_id}: {e}")
+        set_override_status(document_id, 're-extract', False)
+        error_msg = f"Failed to re-extract {document_id}: {str(e)}"
+        log_override_audit(document_id, 're-extract', request.dict(), original_state, 
+                         success=False, error_message=error_msg)
+        print(f"[API Error] {error_msg}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Manual Override API Endpoints ---
+@app.post("/re-route/{document_id}")
+def re_route_document(document_id: str, request: ReRouteRequest):
+    print(f"[API] Received request to re-route document: {document_id}")
+    
+    try:
+        # Get current document state
+        doc = get_doc_for_reprocessing(document_id)
+        
+        # Store original state for audit trail
+        original_state = {
+            'routing_destination': doc.get('routing_destination'),
+            'status': doc.get('status')
+        }
+        
+        # Set override status
+        set_override_status(document_id, 're-route', True)
+        
+        # Prepare routing message with override parameters
+        routing_message = {
+            'document_id': document_id,
+            'filename': doc.get('filename'),
+            'doc_type': doc.get('doc_type'),
+            'confidence': doc.get('confidence'),
+            'entities': {},  # Will be populated from history if available
+            'summary': doc.get('summary', ''),
+            'priority_content': doc.get('priority_content', {}),
+            'is_vip': doc.get('is_vip', False),
+            'vip_level': doc.get('vip_level', 'NONE'),
+            'priority_score': 100,  # High priority for manual overrides
+            'priority_reason': 'Manual re-routing override',
+            'sender': 'N/A',
+            # Override-specific parameters
+            'destination': request.destination,
+            'test_mode': request.test_mode,
+            'schedule_delivery': request.schedule_delivery,
+            'override_parameters': request.dict()
+        }
+        
+        # Get entities from history if available
+        history_events = get_document_history(document_id)
+        for event in reversed(history_events):
+            if event['status'] == 'Extracted':
+                extracted_details = event.get('details', {})
+                routing_message['entities'] = extracted_details.get('entities', {})
+                break
+        
+        print(f"[API] Sending re-routing message: {routing_message['document_id']}")
+        
+        # Publish to routing queue with override event type
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        channel = connection.channel()
+        channel.queue_declare(queue='routing_queue', durable=True)
+        
+        # Add override metadata to message
+        override_metadata = {
+            'event_type': 'doc.reroute.requested',
+            'override_timestamp': datetime.now(UTC).isoformat(),
+            'user_id': 'operator',
+            'reason': request.reason
+        }
+        routing_message.update(override_metadata)
+        
+        channel.basic_publish(exchange='', routing_key='routing_queue', body=json.dumps(routing_message))
+        connection.close()
+        
+        # Log successful override request
+        log_override_audit(document_id, 're-route', request.dict(), original_state)
+        
+        print(f"[API] Successfully queued {document_id} for re-routing to {request.destination}.")
+        return {
+            "status": "success", 
+            "detail": f"Document {document_id} sent for re-routing to {request.destination}.",
+            "override_id": f"reroute_{document_id}_{int(time.time())}"
+        }
+        
+    except HTTPException as http_exc:
+        set_override_status(document_id, 're-route', False)
+        raise http_exc
+    except Exception as e:
+        set_override_status(document_id, 're-route', False)
+        error_msg = f"Failed to re-route {document_id}: {str(e)}"
+        log_override_audit(document_id, 're-route', request.dict(), original_state, 
+                         success=False, error_message=error_msg)
+        print(f"[API Error] {error_msg}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/override-options")
+def get_override_options_endpoint(option_type: str = None):
+    """Get available override options for the UI"""
+    try:
+        options = get_override_options(option_type)
+        return {"status": "success", "options": options}
+    except Exception as e:
+        print(f"[API Error] Failed to get override options: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/documents/{document_id}/override-options")
+def get_document_override_options(document_id: str):
+    """Get override options specific to a document"""
+    try:
+        # Get document state
+        doc = get_doc_for_reprocessing(document_id)
+        
+        # Get all override options
+        all_options = get_override_options()
+        
+        # Get document-specific recommendations
+        recommendations = {
+            'ocr_engines': all_options.get('ocr_engine', []),
+            'doc_types': all_options.get('doc_type', []),
+            'routing_destinations': all_options.get('routing_destination', []),
+            'current_state': {
+                'doc_type': doc.get('doc_type'),
+                'confidence': doc.get('confidence'),
+                'routing_destination': doc.get('routing_destination'),
+                'status': doc.get('status')
+            }
+        }
+        
+        return {"status": "success", "recommendations": recommendations}
+    except Exception as e:
+        print(f"[API Error] Failed to get document override options: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/documents/{document_id}/override-audit")
+def get_document_override_audit(document_id: str, limit: int = 10):
+    """Get audit trail for a document's override actions"""
+    try:
+        audit_trail = get_override_audit_trail(document_id, limit)
+        return {"status": "success", "audit_trail": audit_trail}
+    except Exception as e:
+        print(f"[API Error] Failed to get override audit trail: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- OAuth Mailbox Status Endpoint (for monitoring) ---
@@ -549,6 +1207,67 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+# --- Test endpoint for WebSocket debugging ---
+@app.post("/test-websocket")
+async def test_websocket():
+    """Test endpoint to manually trigger a WebSocket message"""
+    test_message = {
+        "document_id": "test-websocket",
+        "filename": "test-file.pdf",
+        "status": "Test Status",
+        "last_updated": datetime.now(UTC).isoformat()
+    }
+    manager.queue_broadcast(json.dumps(test_message))
+    return {"status": "success", "message": "Test message queued for broadcast"}
+
+# --- Test endpoint for override system ---
+@app.post("/test-override-system")
+async def test_override_system():
+    """Test endpoint to verify override system is working"""
+    try:
+        # Test override options
+        options = get_override_options()
+        
+        # Test database tables
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Check if override tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='override_audit_trail'")
+        audit_table_exists = cursor.fetchone() is not None
+        
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='override_options'")
+        options_table_exists = cursor.fetchone() is not None
+        
+        # Check if override columns exist in document_status
+        cursor.execute("PRAGMA table_info(document_status)")
+        columns = [column[1] for column in cursor.fetchall()]
+        override_columns_exist = 'override_in_progress' in columns and 'override_type' in columns
+        
+        conn.close()
+        
+        return {
+            "status": "success",
+            "override_system": {
+                "audit_table_exists": audit_table_exists,
+                "options_table_exists": options_table_exists,
+                "override_columns_exist": override_columns_exist,
+                "available_options": options
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Override system test failed: {str(e)}"}
+
+# --- Database migration endpoint ---
+@app.post("/migrate-database")
+async def migrate_database():
+    """Manually run database migrations"""
+    try:
+        run_database_migrations()
+        return {"status": "success", "message": "Database migrations completed successfully"}
+    except Exception as e:
+        return {"status": "error", "message": f"Migration failed: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
