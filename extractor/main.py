@@ -100,26 +100,49 @@ class ExtractionResult:
     filename: str
     extracted_text: str = ""
     summary: str = ""
-    priority_content: dict = None
+    priority_content: dict = None  # Now includes entities, confidence scores, etc.
     error: str = ""
     processing_time: float = 0.0
-
-# Connection Management
-class SimpleConnectionManager:
-    def __init__(self, host: str):
-        self.host = host
-        self._lock = threading.Lock()
     
-    def get_connection(self):
-        try:
-            return pika.BlockingConnection(pika.ConnectionParameters(host=self.host, heartbeat=600))
-        except Exception as e:
-            logger.error(f"Connection failed: {e}")
-            return None
-
-connection_manager = SimpleConnectionManager(RABBITMQ_HOST)
+    def __post_init__(self):
+        if self.priority_content is None:
+            self.priority_content = {
+                'urgency_level': 'low',
+                'entities': {},
+                'extraction_confidence': 0.0,
+                'text_quality_score': 0.0
+            }
+# Connection Management
+def get_rabbitmq_connection():
+    """Creates and returns a new RabbitMQ connection."""
+    try:
+        return pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=600))
+    except pika.exceptions.AMQPConnectionError as e:
+        logger.error(f"Failed to create RabbitMQ connection: {e}")
+        return None
 
 # Core Functions
+def publish_message(queue_name: str, message: dict):
+    """Publishes a message to a given queue, creating a new connection."""
+    connection = get_rabbitmq_connection()
+    if not connection:
+        logger.error(f"Cannot publish to {queue_name}, no connection.")
+        return
+    try:
+        with connection.channel() as channel:
+            channel.queue_declare(queue=queue_name, durable=True)
+            channel.basic_publish(
+                exchange='', 
+                routing_key=queue_name, 
+                body=json.dumps(message),
+                properties=pika.BasicProperties(delivery_mode=2) # Make message persistent
+            )
+    except Exception as e:
+        logger.error(f"Failed to publish to {queue_name}: {e}")
+    finally:
+        if connection.is_open:
+            connection.close()
+
 def publish_status_update(doc_id: str, status: str, details: dict = None, priority_score: int = None, priority_reason: str = None, filename:str=None):
     if details is None:
         details = {}
@@ -135,16 +158,36 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, priori
         "last_updated": datetime.now(UTC).isoformat(),  # CHANGE from "timestamp"
         "details": details
     }
-    
-    connection = connection_manager.get_connection()
-    if connection:
-        try:
-            channel = connection.channel()
-            channel.queue_declare(queue=STATUS_QUEUE_NAME, durable=True)
-            channel.basic_publish(exchange='', routing_key=STATUS_QUEUE_NAME, body=json.dumps(message))
-            connection.close()
-        except Exception:
-            pass
+    publish_message(STATUS_QUEUE_NAME, message)
+
+def publish_doc_text_event(doc_id: str, filename: str, cleaned_text: str, summary: str, 
+                          extraction_confidence: float, text_quality_score: float, reasoning: str):
+    """Publish doc.text event as per specification"""
+    message = {
+        "event_type": "doc.text",
+        "document_id": doc_id,
+        "filename": filename,
+        "cleaned_text": cleaned_text,
+        "summary": summary,
+        "extraction_confidence": extraction_confidence,
+        "text_quality_score": text_quality_score,
+        "reasoning": reasoning,
+        "timestamp": datetime.now(UTC).isoformat()
+    }
+    publish_message('doc_text_events', message)
+
+def publish_doc_entities_event(doc_id: str, filename: str, entities: dict, extraction_confidence: float):
+    """Publish doc.entities event as per specification"""
+    message = {
+        "event_type": "doc.entities",
+        "document_id": doc_id,
+        "filename": filename,
+        "entities": entities,
+        "extraction_confidence": extraction_confidence,
+        "timestamp": datetime.now(UTC).isoformat()
+    }
+    publish_message('doc_entities_events', message)
+
 
 def extract_text_from_document(content_bytes: bytes, content_type: str, filename: str, override_params: dict = None) -> str:
     if not content_bytes:
@@ -219,10 +262,24 @@ def extract_text_from_document(content_bytes: bytes, content_type: str, filename
 
 def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> dict:
     if not groq_client and not gemini_model:
-        return {"cleaned_text": text, "summary": "LLM analysis unavailable", "priority_content": {"urgency_level": "low"}}
+        return {
+            "cleaned_text": text, 
+            "summary": "LLM analysis unavailable", 
+            "priority_content": {"urgency_level": "low"},
+            "entities": {},
+            "extraction_confidence": 0.0,
+            "text_quality_score": 0.0
+        }
     
     if len(text.strip()) < 10:
-        return {"cleaned_text": text, "summary": "Document too short for analysis", "priority_content": {"urgency_level": "low"}}
+        return {
+            "cleaned_text": text, 
+            "summary": "Document too short for analysis", 
+            "priority_content": {"urgency_level": "low"},
+            "entities": {},
+            "extraction_confidence": 0.0,
+            "text_quality_score": 0.1
+        }
     
     processing_text = text[:MAX_TEXT_LENGTH]
     if len(text) > MAX_TEXT_LENGTH:
@@ -238,9 +295,10 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
     {urgency_context}
     
     Analyze this document and provide JSON with:
-    1. Cleaned text (fix OCR errors)
+    1. Cleaned text (fix OCR errors and assess text quality)
     2. 2-3 sentence summary
-    3. Extract: deadlines, key_parties, financial_commitments, action_items, urgency_level
+    3. Extract entities in standardized format
+    4. Assess extraction confidence and text quality
     
     Return as valid JSON:
     {{
@@ -249,7 +307,17 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
       "priority_content": {{
         "deadlines": ["list"], "key_parties": ["list"], "financial_commitments": ["list"],
         "action_items": ["list"], "urgency_level": "high/medium/low"
-      }}
+      }},
+      "entities": {{
+        "dates": ["{{'value': '2024-01-15', 'type': 'deadline', 'confidence': 0.95}}"],
+        "parties": ["{{'name': 'Company ABC', 'role': 'contractor', 'confidence': 0.90}}"],
+        "amounts": ["{{'value': '$50,000', 'currency': 'USD', 'type': 'payment', 'confidence': 0.85}}"],
+        "locations": ["{{'name': 'New York', 'type': 'city', 'confidence': 0.80}}"],
+        "organizations": ["{{'name': 'ABC Corp', 'type': 'company', 'confidence': 0.90}}"]
+      }},
+      "extraction_confidence": 0.85,
+      "text_quality_score": 0.90,
+      "reasoning": "Brief explanation of text quality and extraction confidence"
     }}
     
     Document: {processing_text}
@@ -260,7 +328,7 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
         try:
             response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="llama-3.1-8b-instant", temperature=0.1, max_tokens=2048
+                model="llama-3.1-8b-instant", temperature=0.1, max_tokens=3072
             )
             json_text = response.choices[0].message.content.strip().lstrip('```json').rstrip('```').strip()
             
@@ -270,16 +338,24 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
             
             result = json.loads(json_text)
             
-            # Ensure required structure
-            if all(key in result for key in ['cleaned_text', 'summary', 'priority_content']):
-                priority_content = result.get('priority_content', {})
-                defaults = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
-                for field, default in defaults.items():
-                    if field not in priority_content:
-                        priority_content[field] = default
+            # Ensure required structure with backward compatibility
+            if all(key in result for key in ['cleaned_text', 'summary']):
+                # Ensure priority_content exists (backward compatibility)
+                if 'priority_content' not in result:
+                    result['priority_content'] = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
+                
+                # Ensure entities exists (new requirement)
+                if 'entities' not in result:
+                    result['entities'] = {'dates': [], 'parties': [], 'amounts': [], 'locations': [], 'organizations': []}
+                
+                # Add confidence scores if missing
+                result.setdefault('extraction_confidence', 0.7)
+                result.setdefault('text_quality_score', 0.8)
+                result.setdefault('reasoning', 'Automated extraction completed')
+                
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Groq LLM analysis failed: {e}")
     
     # Fallback to Gemini
     if gemini_model:
@@ -288,18 +364,32 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
             json_text = response.text.strip().lstrip('```json').rstrip('```').strip()
             result = json.loads(json_text)
             
-            if all(key in result for key in ['cleaned_text', 'summary', 'priority_content']):
-                priority_content = result.get('priority_content', {})
-                defaults = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
-                for field, default in defaults.items():
-                    if field not in priority_content:
-                        priority_content[field] = default
+            if all(key in result for key in ['cleaned_text', 'summary']):
+                # Same structure validation as above
+                if 'priority_content' not in result:
+                    result['priority_content'] = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
+                
+                if 'entities' not in result:
+                    result['entities'] = {'dates': [], 'parties': [], 'amounts': [], 'locations': [], 'organizations': []}
+                
+                result.setdefault('extraction_confidence', 0.7)
+                result.setdefault('text_quality_score', 0.8)
+                result.setdefault('reasoning', 'Automated extraction completed')
+                
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Gemini LLM analysis failed: {e}")
     
-    return {"cleaned_text": text, "summary": "LLM analysis failed", "priority_content": {"urgency_level": "low"}}
-
+    # Complete fallback
+    return {
+        "cleaned_text": text, 
+        "summary": "LLM analysis failed", 
+        "priority_content": {"urgency_level": "low"},
+        "entities": {'dates': [], 'parties': [], 'amounts': [], 'locations': [], 'organizations': []},
+        "extraction_confidence": 0.3,
+        "text_quality_score": 0.5,
+        "reasoning": "Fallback: LLM processing unavailable"
+    }
 # Processing Engine
 class PriorityProcessor:
     def __init__(self):
@@ -353,23 +443,9 @@ class PriorityQueueConsumer:
         self.queue_name = PRIORITY_QUEUES[priority]
         self.processor = processor
         self.executor = ThreadPoolExecutor(max_workers=thread_count, thread_name_prefix=f"P{priority.value}")
-        self.connection = None
-        self.channel = None
         self.is_running = False
-    
-    def connect(self):
-        try:
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=600))
-            self.channel = self.connection.channel()
-            self.channel.queue_declare(queue=self.queue_name, durable=True)
-            self.channel.queue_declare(queue=CLASSIFICATION_QUEUE, durable=True)
-            self.channel.basic_qos(prefetch_count=PREFETCH_COUNT)
-            logger.info(f"Connected to {self.queue_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Connection failed for {self.queue_name}: {e}")
-            return False
-    
+        self._lock = threading.Lock()
+
     def process_message_callback(self, ch, method, properties, body):
         try:
             message = json.loads(body)
@@ -380,33 +456,41 @@ class PriorityQueueConsumer:
                 delivery_tag=method.delivery_tag, channel=ch
             )
             self.executor.submit(self.process_task, task)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-        except Exception:
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-    
+        except Exception as e:
+            logger.error(f"Error submitting task for processing: {e}")
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+
     def process_task(self, task: ProcessingTask):
         try:
             result = self.processor.process_document(task)
             
             if result.success:
+                publish_doc_entities_event(
+                    doc_id=result.document_id, filename=result.filename,
+                    entities=result.priority_content.get('entities', {}),
+                    extraction_confidence=result.priority_content.get('extraction_confidence', 0.7)
+                )
+                
                 classifier_message = {
                     'document_id': result.document_id, 'filename': result.filename,
                     'extracted_text': result.extracted_text, 'summary': result.summary,
-                    'priority_content': result.priority_content, 'entities': {},
+                    'priority_content': result.priority_content, 'entities': result.priority_content.get('entities', {}),
                     'sender': task.message.get('sender', 'N/A'),
                     'priority_score': task.message.get('priority_score', Priority.LOW),
                     'priority_reason': task.message.get('priority_reason', 'Unknown')
                 }
-                self.send_to_classifier(classifier_message)
+                publish_message(CLASSIFICATION_QUEUE, classifier_message)
+                
                 publish_status_update(
-                    doc_id=result.document_id, status="Extracted",
-                    filename=result.filename,
+                    doc_id=result.document_id, status="Extracted", filename=result.filename,
                     details={
-                        "extracted_text": result.extracted_text,  # Add the actual extracted text
+                        "extracted_text": result.extracted_text,
                         "chars_extracted": len(result.extracted_text), 
                         "processing_time": result.processing_time,
                         "queue_processed_from": self.queue_name,
-                        # Include override information if this was a manual re-extract
+                        "extraction_confidence": result.priority_content.get('extraction_confidence', 0.7),
+                        "text_quality_score": result.priority_content.get('text_quality_score', 0.8),
+                        "entities_extracted": len([item for sublist in result.priority_content.get('entities', {}).values() if isinstance(sublist, list) for item in sublist]),
                         "is_manual_override": bool(task.message.get('override_parameters')),
                         "override_parameters": task.message.get('override_parameters', {})
                     },
@@ -415,58 +499,64 @@ class PriorityQueueConsumer:
                 )
             else:
                 publish_status_update(
-                    doc_id=result.document_id, status="Extraction Failed",
-                    filename=result.filename,
+                    doc_id=result.document_id, status="Extraction Failed", filename=result.filename,
                     details={
-                        "error": result.error,
-                        "processing_time": result.processing_time,
+                        "error": result.error, "processing_time": result.processing_time,
                         "queue_processed_from": self.queue_name
                     },
                     priority_score=task.message.get('priority_score'),
                     priority_reason=task.message.get('priority_reason')
                 )
+            
+            task.channel.basic_ack(delivery_tag=task.delivery_tag)
+
         except Exception as e:
-            logger.error(f"Task processing error {task.document_id}: {e}")
-    
-    def send_to_classifier(self, message: dict):
-        connection = connection_manager.get_connection()
-        if connection:
+            logger.error(f"Unhandled error in process_task for {task.document_id}: {e}")
             try:
-                channel = connection.channel()
-                channel.queue_declare(queue=CLASSIFICATION_QUEUE, durable=True)
-                channel.basic_publish(exchange='', routing_key=CLASSIFICATION_QUEUE, body=json.dumps(message))
-                connection.close()
-            except Exception:
-                pass
-    
+                task.channel.basic_nack(delivery_tag=task.delivery_tag, requeue=True)
+            except Exception as ack_e:
+                logger.error(f"Failed to NACK message {task.document_id}: {ack_e}")
+
     def start_consuming(self):
-        if not self.connect():
-            return False
-        
         self.is_running = True
-        try:
-            self.channel.basic_consume(queue=self.queue_name, on_message_callback=self.process_message_callback)
-            self.channel.start_consuming()
-        except KeyboardInterrupt:
-            self.stop()
-        except Exception as e:
-            logger.error(f"Consumer error for {self.queue_name}: {e}")
-        finally:
-            self.cleanup()
-        return True
-    
-    def stop(self):
-        self.is_running = False
-        if self.channel and hasattr(self.channel, 'stop_consuming'):
-            self.channel.stop_consuming()
-        self.executor.shutdown(wait=True, timeout=30)
-    
-    def cleanup(self):
-        if self.connection and hasattr(self.connection, 'is_open') and self.connection.is_open:
+        logger.info(f"Consumer for {self.queue_name} starting.")
+        while self.is_running:
+            connection = None
             try:
-                self.connection.close()
-            except Exception:
-                pass
+                connection = get_rabbitmq_connection()
+                if not connection:
+                    time.sleep(5)
+                    continue
+                
+                with connection.channel() as channel:
+                    channel.queue_declare(queue=self.queue_name, durable=True)
+                    channel.basic_qos(prefetch_count=self.executor._max_workers)
+                    
+                    for method_frame, properties, body in channel.consume(self.queue_name, inactivity_timeout=1):
+                        if not self.is_running:
+                            break
+                        if method_frame:
+                            self.process_message_callback(channel, method_frame, properties, body)
+            
+            except pika.exceptions.AMQPConnectionError:
+                logger.warning(f"Connection error for {self.queue_name}. Reconnecting...")
+                time.sleep(5)
+            except Exception as e:
+                logger.error(f"Consumer error for {self.queue_name}: {e}")
+                time.sleep(5)
+            finally:
+                if connection and connection.is_open:
+                    connection.close()
+        logger.info(f"Consumer for {self.queue_name} stopped.")
+
+    def stop(self):
+        with self._lock:
+            if not self.is_running:
+                return
+            self.is_running = False
+            logger.info(f"Stopping consumer for {self.queue_name}...")
+        self.executor.shutdown(wait=True, cancel_futures=True)
+        logger.info(f"Executor for {self.queue_name} shut down.")
 
 # Main Service
 class PriorityExtractionService:

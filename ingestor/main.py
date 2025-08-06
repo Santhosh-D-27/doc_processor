@@ -385,23 +385,26 @@ def process_attachment(service, message_id, part, sender, subject, summary):
             'file_content': encoded_content,
             'priority_score': priority_score, 
             'priority_reason': priority_reason, 
-            'source': 'oauth_email',
+            'source': 'email_attachment',  # ← Changed from 'oauth_email'
             'sender': sender, 
             'context': summary, 
-            'email_subject': subject
+            'email_subject': subject,
+            'document_source_type': 'email_with_attachment'  # ← UI can use this
         }
         
         publish_message(message_data)
         publish_status_update(document_id, "Ingested", {
             "filename": filename, 
-            "source": "OAuth Email", 
+            "source": "Email Attachment",  # ← Changed from "OAuth Email"
+            "source_type": "email_with_attachment",  # ← For UI display
             "storage_path": storage_file_path,
             "file_content_encoded": encoded_content, 
             "content_type": part.get('mimeType', 'application/octet-stream'),
             "sender": sender, 
             "email_subject": subject, 
             "priority_score": priority_score, 
-            "priority_reason": priority_reason
+            "priority_reason": priority_reason,
+            "email_context": summary[:200] + "..." if len(summary) > 200 else summary
         })
         
         print(f"[OAuth] ✅ Successfully processed attachment: {filename} (ID: {document_id})")
@@ -410,6 +413,92 @@ def process_attachment(service, message_id, part, sender, subject, summary):
     except Exception as e:
         print(f"[OAuth] ❌ Error processing attachment {part.get('filename', 'unknown')}: {e}")
         return False
+def process_email_body_as_document(service, message_id, sender, subject, email_body):
+    """Process standalone email body as a document"""
+    try:
+        document_id = str(uuid.uuid4())
+        
+        # Clean and prepare email content
+        email_content = f"Subject: {subject}\nFrom: {sender}\nDate: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n{email_body}"
+        
+        # Create filename from subject (sanitized)
+        safe_subject = "".join(c for c in subject if c.isalnum() or c in (' ', '-', '_')).rstrip()[:50]
+        storage_filename = f"{document_id}_Email_{safe_subject}.txt"
+        storage_file_path = os.path.join(STORAGE_PATH, storage_filename)
+        
+        # Save email as text document
+        os.makedirs(STORAGE_PATH, exist_ok=True)
+        with open(storage_file_path, "w", encoding='utf-8') as f:
+            f.write(email_content)
+        
+        # Determine priority for email body
+        body_length = len(email_body)
+        priority_score, priority_reason = decide_email_priority(sender, subject, body_length)
+        
+        print(f"[OAuth] 📧 Processing email body: {subject[:50]}... (Length: {body_length} chars)")
+        
+        # Prepare message for queue
+        encoded_content = base64.b64encode(email_content.encode('utf-8')).decode('utf-8')
+        message_data = {
+            'document_id': document_id,
+            'filename': f"Email: {safe_subject}",
+            'storage_path': storage_file_path,
+            'content_type': 'text/plain',
+            'file_content': encoded_content,
+            'priority_score': priority_score,
+            'priority_reason': priority_reason,
+            'source': 'email_body',  # ← This identifies it as email-only
+            'sender': sender,
+            'email_subject': subject,
+            'email_body_length': body_length,
+            'document_source_type': 'email_only'  # ← UI can use this
+        }
+        
+        publish_message(message_data)
+        publish_status_update(document_id, "Ingested", {
+            "filename": f"Email: {safe_subject}",
+            "source": "Email Body", 
+            "source_type": "email_only",  # ← For UI display
+            "storage_path": storage_file_path,
+            "file_content_encoded": encoded_content,
+            "content_type": 'text/plain',
+            "sender": sender,
+            "email_subject": subject,
+            "priority_score": priority_score,
+            "priority_reason": priority_reason,
+            "body_length": body_length
+        })
+        
+        print(f"[OAuth] ✅ Email body processed: {subject[:50]}... (ID: {document_id})")
+        return True
+        
+    except Exception as e:
+        print(f"[OAuth] ❌ Error processing email body: {e}")
+        return False
+
+
+def decide_email_priority(sender, subject, body_length):
+    """Determine priority for email content"""
+    sender_lower = sender.lower() if sender else ""
+    subject_lower = subject.lower() if subject else ""
+    
+    # High priority for executives or urgent content
+    if any(title in sender_lower for title in ["ceo", "director", "vp", "president"]):
+        return Priority.HIGH, f"Executive sender: {sender}"
+    
+    # High priority for urgent keywords
+    urgent_keywords = ['urgent', 'asap', 'critical', 'emergency', 'immediate', 'priority']
+    if any(keyword in subject_lower for keyword in urgent_keywords):
+        return Priority.HIGH, f"Urgent email: {subject[:30]}..."
+    
+    # Medium priority for managers or long emails
+    if any(title in sender_lower for title in ["manager", "lead", "supervisor"]):
+        return Priority.MEDIUM, f"Management sender: {sender}"
+    
+    if body_length > 1000:
+        return Priority.MEDIUM, f"Long email content: {body_length} chars"
+    
+    return Priority.LOW, f"Standard email: {body_length} chars"
 
 # Email Processing
 def process_oauth_mailbox(email_address):
@@ -422,70 +511,92 @@ def process_oauth_mailbox(email_address):
     state_db_path, processed_ids = setup_and_load_state_db(email_address)
     
     try:
-        # Fix: Use timezone-aware date calculation
         search_date = (datetime.now(UTC).date() - timedelta(days=7)).strftime("%Y/%m/%d")
-        print(f"[OAuth] 🔍 Searching for emails after: {search_date}")
+        print(f"[OAuth] 🔍 Searching for all emails after: {search_date}")
         
+        # Unified query for all recent emails
         results = service.users().messages().list(
             userId='me', 
-            q=f'after:{search_date} has:attachment', 
-            maxResults=50
+            q=f'after:{search_date}', 
+            maxResults=100  # A reasonable limit for a single run
         ).execute()
         messages = results.get('messages', [])
         
-        print(f"[OAuth] 📬 Found {len(messages)} messages with attachments in {email_address} (last 7 days)")
+        print(f"[OAuth] 📬 Found {len(messages)} total emails to check.")
         
-        if not messages:
-            print(f"[OAuth] ℹ️  No messages with attachments found in {email_address}")
-            return
+        processed_attachments_count = 0
+        processed_bodies_count = 0
         
-        processed_count = 0
-        for message in messages:
-            message_id = message['id']
+        for message_info in messages:
+            message_id = message_info['id']
             if message_id in processed_ids:
                 continue
-            
+
             try:
                 msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
-                headers = {h['name']: h['value'] for h in msg['payload'].get('headers', [])}
+                payload = msg['payload']
+                headers = {h['name']: h['value'] for h in payload.get('headers', [])}
                 sender = headers.get('From', 'Unknown')
                 subject = headers.get('Subject', 'No Subject')
                 
-                print(f"[OAuth] 📨 Processing message from {sender}: {subject}")
+                print(f"[OAuth] 📨 Processing email from '{sender}': '{subject}'")
                 
-                email_body = extract_email_body(msg['payload'])
-                summary = summarize_with_llm(email_body[:1000]) if email_body else "No email body content found"
+                # --- 1. Process Attachments ---
+                email_body_for_summary = extract_email_body(payload)
+                summary = summarize_with_llm(email_body_for_summary[:1000]) if email_body_for_summary else "No email body content found"
                 
-                attachments_processed = 0
-                def process_part(part):
-                    nonlocal attachments_processed
+                attachments_processed_this_email = 0
+                
+                def find_and_process_attachments(part):
+                    nonlocal attachments_processed_this_email
+                    # This is a potential attachment
+                    if part.get('filename') and part.get('body', {}).get('attachmentId'):
+                        if process_attachment(service, message_id, part, sender, subject, summary):
+                            attachments_processed_this_email += 1
+                    
+                    # Recurse into subparts
                     if 'parts' in part:
                         for subpart in part['parts']:
-                            process_part(subpart)
-                    elif process_attachment(service, message_id, part, sender, subject, summary):
-                        attachments_processed += 1
+                            find_and_process_attachments(subpart)
+
+                find_and_process_attachments(payload)
                 
-                process_part(msg['payload'])
+                if attachments_processed_this_email > 0:
+                    processed_attachments_count += attachments_processed_this_email
+                    print(f"[OAuth]   ✅ Processed {attachments_processed_this_email} attachments from this email.")
+
+                # --- 2. Process Email Body as a Separate Document ---
+                email_body_for_document = extract_email_body(payload)
                 
-                if attachments_processed > 0:
-                    processed_count += 1
-                    print(f"[OAuth] ✅ Processed {attachments_processed} attachments from {sender} - {subject}")
-                else:
-                    print(f"[OAuth] ℹ️  No valid attachments found in message from {sender}")
-                
+                # Only process body if it's substantial
+                if email_body_for_document and len(email_body_for_document.strip()) > 50:
+                    print(f"[OAuth]   📧 Email has substantial body, processing as a document.")
+                    if process_email_body_as_document(service, message_id, sender, subject, email_body_for_document):
+                        processed_bodies_count += 1
+                elif attachments_processed_this_email == 0:
+                    # Only log skipping if there were no attachments either
+                    print(f"[OAuth]   ⏭️  Skipping email: body is too short and no attachments were found.")
+
+                # Mark the entire email as processed so we don't check it again
                 save_processed_id(state_db_path, message_id)
-                
+
             except Exception as e:
-                print(f"[OAuth] ❌ Error processing message {message_id}: {e}")
+                print(f"[OAuth] ❌ Error processing email {message_id}: {e}")
+                # Continue to the next email
                 continue
         
-        if processed_count > 0:
-            print(f"[OAuth] 📈 Total processed: {processed_count} emails with attachments from {email_address}")
+        # --- Final Summary ---
+        total_ingested = processed_attachments_count + processed_bodies_count
+        if total_ingested > 0:
+            print(f"[OAuth] 📈 Finished processing for {email_address}:")
+            print(f"[OAuth]   - Ingested {processed_attachments_count} attachments.")
+            print(f"[OAuth]   - Ingested {processed_bodies_count} email bodies.")
+            print(f"[OAuth]   - Total documents created: {total_ingested}")
         else:
-            print(f"[OAuth] ℹ️  No new attachments processed from {email_address}")
+            print(f"[OAuth] ℹ️  No new documents to ingest from {email_address} in this run.")
             
     except Exception as e:
-        print(f"[OAuth] ❌ Error processing mailbox {email_address}: {e}")
+        print(f"[OAuth] ❌ A critical error occurred while processing mailbox {email_address}: {e}")
         import traceback
         print(f"[OAuth] ❌ Full traceback: {traceback.format_exc()}")
 
@@ -569,6 +680,13 @@ def start_file_monitor():
     observer.join()
 
 # OAuth Endpoints
+@app.post("/oauth/disconnect/{email:path}")
+async def oauth_disconnect(email: str):
+    """Disconnect a mailbox"""
+    success = disconnect_mailbox(email)
+    return {"success": success, "email": email}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def oauth_home():
     """OAuth management home page"""
@@ -1072,21 +1190,6 @@ async def oauth_connect():
 
 
 # Add a debug endpoint to check configuration
-@app.get("/debug/oauth-config")
-async def debug_oauth_config():
-    """Debug OAuth configuration"""
-    return {
-        "google_client_id": GOOGLE_CLIENT_ID[:20] + "..." if GOOGLE_CLIENT_ID else "NOT SET",
-        "google_client_secret": "SET" if GOOGLE_CLIENT_SECRET else "NOT SET",
-        "redirect_uri": REDIRECT_URI,
-        "database_path": DB_NAME,
-        "database_exists": os.path.exists(DB_NAME),
-        "scopes": SCOPES
-    }@app.post("/oauth/disconnect/{email}")
-async def oauth_disconnect(email: str):
-    """Disconnect a mailbox"""
-    success = disconnect_mailbox(email)
-    return {"success": success, "email": email}
 
 # API Endpoints
 @app.post("/upload")
@@ -1126,33 +1229,9 @@ async def upload_document(sender: str = Form(None), file: UploadFile = File(...)
         publish_status_update(document_id, "Ingestion Failed", {"filename": original_filename, "error": str(e)})
         return {"error": str(e), "status": "failed_to_publish"}
 
-@app.get("/debug/mailboxes")
-async def debug_mailboxes():
-    try:
-        mailboxes = get_oauth_mailboxes_from_db()
-        return {"status": "success", "mailboxes": mailboxes, "db_path": DB_NAME, "db_exists": os.path.exists(DB_NAME)}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
 
-@app.get("/debug/test-email/{email}")
-async def debug_test_email(email: str):
-    try:
-        service = get_gmail_service(email)
-        if not service:
-            return {"status": "error", "error": "Could not get Gmail service"}
-        
-        profile = service.users().getProfile(userId='me').execute()
-        search_date = (date.today() - timedelta(days=7)).strftime("%Y/%m/%d")
-        results = service.users().messages().list(userId='me', q=f'after:{search_date} has:attachment', maxResults=5).execute()
-        messages = results.get('messages', [])
-        
-        return {
-            "status": "success",
-            "profile": {"email": profile.get('emailAddress'), "total_messages": profile.get('messagesTotal')},
-            "messages_found": len(messages), "message_ids": [msg['id'] for msg in messages]
-        }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
+
+
 
 @app.get("/health")
 async def health_check():

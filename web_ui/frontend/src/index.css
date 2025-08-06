@@ -1,235 +1,328 @@
-/* In web_ui/frontend/src/index.css */
+/* Optimized CSS for Document Processing Dashboard */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #111827; /* A dark blue-gray */
-  background-image: radial-gradient(circle at 1px 1px, #374151 1px, transparent 0);
-  background-size: 20px 20px;
-  color: #e5e7eb;
+/* Smooth Performance Optimizations */
+* {
+  box-sizing: border-box;
 }
 
-/* Custom utilities for better responsive design */
-@layer utilities {
-  /* Line clamping for text truncation */
-  .line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background-attachment: fixed;
+  color: #f8fafc;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Modern Glassmorphism Effects */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-strong {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced Button Styles */
+.btn-modern {
+  @apply relative overflow-hidden rounded-xl font-semibold transition-all duration-300;
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+  box-shadow: 0 4px 15px 0 rgba(6, 182, 212, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: translateZ(0); /* GPU acceleration */
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 8px 25px 0 rgba(6, 182, 212, 0.4);
+}
+
+.btn-modern:active {
+  transform: translateY(0) translateZ(0);
+}
+
+/* Optimized Upload Zone */
+.upload-zone {
+  @apply relative rounded-2xl transition-all duration-300;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 2px dashed rgba(6, 182, 212, 0.3);
+  transform: translateZ(0); /* GPU acceleration */
+}
+
+.upload-zone:hover {
+  border-color: rgba(6, 182, 212, 0.6);
+  background: rgba(6, 182, 212, 0.05);
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.upload-zone.drag-active {
+  border-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.1);
+  transform: scale(1.02) translateZ(0);
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.3);
+}
+
+/* Modern Table Styling */
+.modern-table {
+  @apply w-full border-collapse;
+  border-spacing: 0;
+}
+
+.modern-table th {
+  @apply text-left font-semibold text-sm;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(51, 65, 85, 0.6));
+  border-bottom: 2px solid rgba(6, 182, 212, 0.3);
+  padding: 1rem 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.modern-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-table tbody tr {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-table tbody tr:hover {
+  background: rgba(6, 182, 212, 0.05);
+  transform: translateX(2px);
+}
+
+/* Enhanced Status Badges */
+.status-badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold tracking-wide;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.status-ingested { 
+  background: linear-gradient(135deg, #475569, #64748b);
+  color: #e2e8f0;
+}
+
+.status-extracted { 
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  color: #fef3c7;
+}
+
+.status-classified { 
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+  color: #e9d5ff;
+}
+
+.status-routed { 
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #d1fae5;
+}
+
+.status-failed { 
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fecaca;
+}
+
+.status-processing { 
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: #dbeafe;
+  animation: pulse-glow 2s infinite;
+}
+
+/* Optimized Animations */
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 0 8px rgba(6, 182, 212, 0);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) translateZ(0); }
+  50% { transform: translateY(-4px) translateZ(0); }
+}
+
+/* Custom Scrollbar - Fixed */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.5) rgba(51, 65, 85, 0.3);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(51, 65, 85, 0.3);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #0891b2, #7c3aed);
+}
+
+/* Progress Bar Enhancements */
+.progress-container {
+  @apply relative overflow-hidden rounded-full;
+  background: rgba(51, 65, 85, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Modern Shadows */
+.shadow-modern {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-modern-lg {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Action Buttons */
+.action-button {
+  @apply px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  transform: translateZ(0);
+}
+
+.action-button:hover {
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.action-button:active {
+  transform: translateY(0) translateZ(0);
+}
+
+/* Connection Status Indicators */
+.status-dot {
+  @apply w-2 h-2 rounded-full;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.status-connected {
+  @apply text-green-400;
+}
+
+.status-disconnected {
+  @apply text-red-400;
+}
+
+.status-warning {
+  @apply text-yellow-400;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 1024px) {
+  .glass-card, .glass-card-strong {
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
   }
   
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-  
-  .line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-  
-  /* Better text truncation */
-  .text-truncate {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  /* Responsive text sizing */
-  .text-responsive-xs {
-    font-size: 0.75rem; /* 12px */
-  }
-  
-  .text-responsive-sm {
-    font-size: 0.875rem; /* 14px */
-  }
-  
-  .text-responsive-base {
-    font-size: 1rem; /* 16px */
-  }
-  
-  .text-responsive-lg {
-    font-size: 1.125rem; /* 18px */
-  }
-  
-  .text-responsive-xl {
-    font-size: 1.25rem; /* 20px */
-  }
-  
-  /* Responsive padding */
-  .p-responsive {
-    padding: 0.5rem;
-  }
-  
-  @media (min-width: 640px) {
-    .p-responsive {
-      padding: 1rem;
-    }
-  }
-  
-  @media (min-width: 1024px) {
-    .p-responsive {
-      padding: 1.5rem;
-    }
-  }
-  
-  /* Better table responsiveness */
-  .table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  /* Custom scrollbar for better mobile experience */
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #1f2937;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #4b5563;
-    border-radius: 3px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #6b7280;
-  }
-  
-  /* Better focus states for accessibility */
-  .focus-visible-ring {
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900;
-  }
-  
-  /* Responsive grid layouts */
-  .grid-responsive {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-  }
-  
-  @media (min-width: 640px) {
-    .grid-responsive {
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-    }
-  }
-  
-  /* Better mobile touch targets */
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  /* Responsive spacing */
-  .space-responsive > * + * {
-    margin-top: 0.5rem;
-  }
-  
-  @media (min-width: 640px) {
-    .space-responsive > * + * {
-      margin-top: 1rem;
-    }
-  }
-  
-  /* Better mobile navigation */
-  .mobile-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-50;
-  }
-  
-  @media (min-width: 1024px) {
-    .mobile-nav {
-      @apply static bg-transparent border-t-0;
-    }
-  }
-  
-  /* Table optimization for 100% zoom */
-  .table-fixed {
-    table-layout: fixed;
-  }
-  
-  .table-fixed th,
-  .table-fixed td {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  /* VIP indicator optimization */
-  .vip-indicator {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-    min-width: 0;
-  }
-  
-  .vip-badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    white-space: nowrap;
-    line-height: 1;
-  }
-  
-  .vip-level {
-    font-size: 0.75rem;
-    font-weight: 500;
-    line-height: 1;
-  }
-  
-  /* Ensure buttons don't overflow */
-  .action-buttons {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-    min-width: 0;
-  }
-  
-  .action-buttons.flex-col {
-    flex-direction: column;
-    gap: 0.75rem;
+  .modern-table th,
+  .modern-table td {
+    padding: 0.75rem 1rem;
   }
   
   .action-button {
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border-radius: 0.5rem;
-    white-space: nowrap;
-    transition: all 0.2s ease-in-out;
-    width: 100%;
-    min-width: 120px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Performance Optimizations */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Smooth transitions for all interactive elements */
+button, .cursor-pointer, [role="button"] {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+}
+
+/* Focus states for accessibility */
+.focus-modern {
+  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Prevent layout shift */
+img, video, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Smooth scrolling behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
   
-  /* Optimize for 100% zoom */
-  @media screen and (min-resolution: 96dpi) {
-    .table-fixed th,
-    .table-fixed td {
-      padding: 0.75rem 1rem;
-    }
-    
-    .vip-badge {
-      padding: 0.5rem 1rem;
-      font-size: 0.8125rem;
-    }
-    
-    .action-button {
-      padding: 0.75rem 1.25rem;
-      font-size: 0.9375rem;
-    }
+  html {
+    scroll-behavior: auto;
   }
 }

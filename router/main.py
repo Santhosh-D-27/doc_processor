@@ -38,7 +38,7 @@ ROUTING_MAP = {
 }
 
 def publish_status_update(doc_id: str, status: str, details: dict = None, routing_destination: str = None, 
-                         doc_type: str = None, confidence: float = None, summary: str = None):
+                         doc_type: str = None, confidence: float = None, summary: str = None, filename: str = None):
     """Publish status update to message bus"""
     status_message = {
         "document_id": doc_id,
@@ -46,6 +46,7 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, routin
         "timestamp": datetime.now(UTC).isoformat(),
         "details": details or {},
         "routing_destination": routing_destination,
+        "filename": filename,
         # Add the missing fields
         "doc_type": doc_type,
         "confidence": confidence,
@@ -226,7 +227,7 @@ def route_document(document: Dict) -> bool:
     filename = document.get('filename', 'Unknown')
     
     # Get destination system based on document type
-    destination_system = ROUTING_MAP.get(doc_type, "dms_system")  # Default to DMS
+    destination_system = document.get('destination') or ROUTING_MAP.get(doc_type, "dms_system")  # Default to DMS
     
     print(f" [x] Routing {filename} ({doc_type}) -> {destination_system}")
     
@@ -270,12 +271,13 @@ def process_document(message):
             publish_status_update(
                 doc_id=document_id,
                 status="Routed",
-                details={"destination": ROUTING_MAP.get(message.get('doc_type', 'UNKNOWN'), "dms_system")},
-                routing_destination=ROUTING_MAP.get(message.get('doc_type', 'UNKNOWN'), "dms_system"),
+                details={"destination": message.get('destination') or ROUTING_MAP.get(message.get('doc_type', 'UNKNOWN'), "dms_system")},
+                routing_destination=message.get('destination') or ROUTING_MAP.get(message.get('doc_type', 'UNKNOWN'), "dms_system"),
                 # --- ADD THESE LINES ---
                 doc_type=message.get('doc_type'),
                 confidence=message.get('confidence'),
-                summary=message.get('summary')
+                summary=message.get('summary'),
+                filename=filename
             )
             print(f"  -> ✅ {filename} routing completed")
             return True
@@ -288,7 +290,8 @@ def process_document(message):
                 # --- ADD THESE LINES ---
                 doc_type=message.get('doc_type'),
                 confidence=message.get('confidence'),
-                summary=message.get('summary')
+                summary=message.get('summary'),
+                filename=filename
             )
             print(f"  -> ❌ {filename} routing failed")
             return False
@@ -302,7 +305,8 @@ def process_document(message):
             # --- ADD THESE LINES ---
             doc_type=message.get('doc_type'),
             confidence=message.get('confidence'),
-            summary=message.get('summary')
+            summary=message.get('summary'),
+            filename=filename
         )
         return False
 
@@ -362,11 +366,7 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
-<<<<<<< HEAD
         print(f' [!] Critical error: {e}')
         exit(1)
-=======
-        print(f'💥 Critical router error: {e}')
-        exit(1)
         
->>>>>>> 508153ac1d6fd101c21412c520e4df73092f84b8
+        

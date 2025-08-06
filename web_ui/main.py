@@ -522,6 +522,11 @@ def consume_status_updates():
             def callback(ch, method, properties, body):
                 try:
                     message = json.loads(body)
+                    
+                    # Add timestamp to message if it's missing to ensure history is always time-stamped
+                    if 'timestamp' not in message or not message['timestamp']:
+                        message['timestamp'] = datetime.now(UTC).isoformat()
+
                     doc_id = message.get("document_id")
 
                     if not doc_id:

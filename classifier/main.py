@@ -88,9 +88,10 @@ class ClassificationResult:
     confidence: float = 0.0
     is_vip: bool = False
     vip_level: str = "NONE"
+    reasoning: str = ""  # NEW: classification reasoning
+    entity_boost: float = 0.0  # NEW: confidence boost from entities
     processing_time: float = 0.0
     error: str = ""
-
 # Strengthened Document Classification Patterns
 DOCUMENT_PATTERNS = {
     'RESUME': {
@@ -247,7 +248,40 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, doc_ty
     finally:
         if connection:
             connection_pool.return_connection(connection)
+# Add this function after publish_status_update()
 
+def publish_doc_type_event(doc_id: str, filename: str, doc_type: str, confidence: float, 
+                          reasoning: str, is_vip: bool, vip_level: str):
+    """Publish doc.type event as per specification"""
+    message = {
+        "event_type": "doc.type",
+        "document_id": doc_id,
+        "filename": filename,
+        "doc_type": doc_type,
+        "confidence": confidence,
+        "reasoning": reasoning,
+        "is_vip": is_vip,
+        "vip_level": vip_level,
+        "timestamp": datetime.now(UTC).isoformat()
+    }
+    
+    connection = None
+    try:
+        connection = connection_pool.get_connection(timeout=2.0)
+        if connection:
+            channel = connection.channel()
+            channel.queue_declare(queue='doc_type_events', durable=True)
+            channel.basic_publish(
+                exchange='', 
+                routing_key='doc_type_events', 
+                body=json.dumps(message),
+                properties=pika.BasicProperties(delivery_mode=2)
+            )
+    except Exception as e:
+        logger.warning(f"Failed to publish doc.type event: {e}")
+    finally:
+        if connection:
+            connection_pool.return_connection(connection)
 def classify_with_rule_based(text: str, priority_score: int = 20) -> dict:
     if not text or not text.strip():
         return {"doc_type": "UNKNOWN", "confidence_score": 0.0}
@@ -468,7 +502,79 @@ def hybrid_classify(text: str, priority_score: int = 20) -> dict:
         return {"doc_type": rule_type, "confidence_score": rule_confidence}
     
     return {"doc_type": "HUMAN_REVIEW_NEEDED", "confidence_score": 0.0}
+# Add this function after hybrid_classify()
 
+def entity_enhanced_classify(text: str, entities: dict, priority_score: int = 20) -> dict:
+    """Enhanced classification using both text and extracted entities"""
+    
+    # Get base classification
+    base_result = hybrid_classify(text, priority_score)
+    base_type = base_result.get('doc_type', 'UNKNOWN')
+    base_confidence = base_result.get('confidence_score', 0.0)
+    
+    # Entity-based confidence boosting
+    confidence_boost = 0.0
+    reasoning_parts = []
+    
+    if entities:
+        # INVOICE indicators
+        if base_type == 'INVOICE':
+            amounts = entities.get('amounts', [])
+            dates = entities.get('dates', [])
+            if amounts:
+                confidence_boost += 0.1
+                reasoning_parts.append(f"Found {len(amounts)} financial amounts")
+            if any('due' in str(date).lower() or 'payment' in str(date).lower() for date in dates):
+                confidence_boost += 0.1
+                reasoning_parts.append("Found payment/due dates")
+        
+        # CONTRACT/AGREEMENT indicators
+        elif base_type in ['CONTRACT', 'AGREEMENT']:
+            parties = entities.get('parties', [])
+            dates = entities.get('dates', [])
+            if len(parties) >= 2:
+                confidence_boost += 0.15
+                reasoning_parts.append(f"Found {len(parties)} parties")
+            if dates:
+                confidence_boost += 0.1
+                reasoning_parts.append("Found contract dates")
+        
+        # RESUME indicators
+        elif base_type == 'RESUME':
+            organizations = entities.get('organizations', [])
+            dates = entities.get('dates', [])
+            if organizations:
+                confidence_boost += 0.1
+                reasoning_parts.append(f"Found {len(organizations)} organizations")
+            if len(dates) >= 2:  # Multiple dates suggest work history
+                confidence_boost += 0.1
+                reasoning_parts.append("Found multiple dates (work history)")
+        
+        # ID_PROOF indicators
+        elif base_type == 'ID_PROOF':
+            dates = entities.get('dates', [])
+            locations = entities.get('locations', [])
+            if dates:
+                confidence_boost += 0.1
+                reasoning_parts.append("Found dates (issue/expiry)")
+            if locations:
+                confidence_boost += 0.1
+                reasoning_parts.append("Found locations")
+    
+    # Apply confidence boost
+    enhanced_confidence = min(base_confidence + confidence_boost, 1.0)
+    
+    # Generate reasoning
+    reasoning = f"Base classification: {base_type} ({base_confidence:.2f})"
+    if reasoning_parts:
+        reasoning += f"; Entity boost: {', '.join(reasoning_parts)} (+{confidence_boost:.2f})"
+    
+    return {
+        "doc_type": base_type,
+        "confidence_score": enhanced_confidence,
+        "reasoning": reasoning,
+        "entity_boost": confidence_boost
+    }
 def determine_vip_status(sender: str, extracted_text: str, priority_content: dict, 
                         priority_score: int = 20) -> Tuple[bool, str]:
     try:
@@ -536,7 +642,11 @@ class PriorityClassificationProcessor:
             
             is_vip, vip_level = determine_vip_status(sender, extracted_text, priority_content, task.priority_score)
             
-            classification_result = hybrid_classify(extracted_text, task.priority_score)
+            # Get entities from the message
+            entities = message.get('entities', {})
+
+# Use entity-enhanced classification
+            classification_result = entity_enhanced_classify(extracted_text, entities, task.priority_score)
             doc_type = classification_result.get('doc_type', 'UNKNOWN')
             confidence = classification_result.get('confidence_score', 0.0)
             
@@ -572,6 +682,8 @@ class PriorityClassificationProcessor:
             return ClassificationResult(
                 success=True, document_id=task.document_id, filename=task.filename,
                 doc_type=doc_type, confidence=confidence, is_vip=is_vip, vip_level=vip_level,
+                reasoning=classification_result.get('reasoning', 'Classification completed'),
+                entity_boost=classification_result.get('entity_boost', 0.0),
                 processing_time=processing_time
             )
             
@@ -640,6 +752,15 @@ class PriorityClassificationService:
             
             if result.success:
                 # Send to router first
+                publish_doc_type_event(
+                    doc_id=result.document_id,
+                    filename=result.filename,
+                    doc_type=result.doc_type,
+                    confidence=result.confidence,
+                    reasoning=getattr(result, 'reasoning', 'Classification completed'),
+                    is_vip=result.is_vip,
+                    vip_level=result.vip_level
+                )
                 router_message = {
                     'document_id': result.document_id, 'filename': result.filename,
                     'doc_type': result.doc_type, 'confidence': result.confidence,
