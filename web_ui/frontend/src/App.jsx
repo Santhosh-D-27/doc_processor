@@ -16,7 +16,7 @@ const Dashboard = () => {
   const [expandedRow, setExpandedRow] = useState(null);
   const [activeTab, setActiveTab] = useState('documents');
   const [wsConnected, setWsConnected] = useState(false);
-  const [oauthStatus, setOauthStatus] = useState({
+  const [oauthStatus, setOauthStatus] = useState({    
     connected_count: 0,
     mailboxes: [],
     ingestor_service_status: 'disconnected'
@@ -444,14 +444,8 @@ const Dashboard = () => {
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-slate-200 truncate">{mailbox.email}</p>
-                        <p className="text-sm text-slate-400">
-                          Connected: {new Date(mailbox.connected_at).toLocaleString()}
-                        </p>
-                        {mailbox.expires_at && (
-                          <p className="text-xs text-slate-500">
-                            Token expires: {new Date(mailbox.expires_at).toLocaleString()}
-                          </p>
-                        )}
+                        
+                        
                       </div>
                       <motion.div 
                         className="flex items-center space-x-2 text-green-400 font-semibold flex-shrink-0"

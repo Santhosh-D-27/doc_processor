@@ -23,18 +23,6 @@ STATUS_QUEUE_NAME = 'document_status_queue'
 DB_NAME = 'web_ui/state.db'
 INGESTOR_URL = 'http://127.0.0.1:8001'  # Ingestor OAuth manager URL
 
-# --- Pydantic Models for API Data Validation ---
-class VIPContactCreate(BaseModel):
-    email: str
-    name: Optional[str] = None
-    vip_level: str # HIGH, MEDIUM, LOW
-    department: Optional[str] = None
-    role: Optional[str] = None
-
-class VIPDocumentUpdate(BaseModel):
-    status: str
-    risk_assessment: Optional[str] = None
-
 # Manual Override Models
 class ReExtractRequest(BaseModel):
     ocr_engine: Optional[str] = "default"  # default, tesseract, easyocr
@@ -1137,72 +1125,6 @@ def get_oauth_status():
             "error": str(e)
         }
 
-# --- VIP Management API Endpoints ---
-@app.get("/vip-documents")
-def get_vip_documents():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM vip_documents ORDER BY last_updated DESC LIMIT 100")
-    vip_docs = cursor.fetchall()
-    conn.close()
-    parsed_vip_docs = []
-    for doc in vip_docs:
-        doc_dict = dict(doc)
-        if doc_dict.get('priority_content'):
-            doc_dict['priority_content'] = json.loads(doc_dict['priority_content'])
-        parsed_vip_docs.append(doc_dict)
-    return parsed_vip_docs
-
-@app.get("/vip-contacts")
-def get_vip_contacts():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM vip_contacts ORDER BY added_at DESC")
-    contacts = cursor.fetchall()
-    conn.close()
-    return [dict(contact) for contact in contacts]
-
-@app.post("/vip-contacts")
-def add_vip_contact(contact: VIPContactCreate):
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO vip_contacts (email, name, vip_level, department, role, added_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (contact.email, contact.name, contact.vip_level, contact.department, contact.role, datetime.now(UTC).isoformat())
-        )
-        conn.commit()
-        conn.close()
-        return {"status": "success", "email": contact.email}
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="VIP contact with this email already exists.")
-
-@app.delete("/vip-contacts/{contact_id}")
-def delete_vip_contact(contact_id: int):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM vip_contacts WHERE id = ?", (contact_id,))
-    conn.commit()
-    conn.close()
-    return {"status": "success", "id": contact_id}
-
-@app.put("/vip-documents/{document_id}")
-def update_vip_document_status(document_id: str, update: VIPDocumentUpdate):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE vip_documents SET status = ?, risk_assessment = ?, last_updated = ? WHERE document_id = ?",
-        (update.status, update.risk_assessment, datetime.now(UTC).isoformat(), document_id)
-    )
-    conn.commit()
-    if cursor.rowcount == 0:
-        conn.close()
-        raise HTTPException(status_code=404, detail="VIP document not found.")
-    conn.close()
-    return {"status": "success", "document_id": document_id, "new_status": update.status}
-
 # --- WebSocket Endpoint ---
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -1213,56 +1135,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-# --- Test endpoint for WebSocket debugging ---
-@app.post("/test-websocket")
-async def test_websocket():
-    """Test endpoint to manually trigger a WebSocket message"""
-    test_message = {
-        "document_id": "test-websocket",
-        "filename": "test-file.pdf",
-        "status": "Test Status",
-        "last_updated": datetime.now(UTC).isoformat()
-    }
-    manager.queue_broadcast(json.dumps(test_message))
-    return {"status": "success", "message": "Test message queued for broadcast"}
-
-# --- Test endpoint for override system ---
-@app.post("/test-override-system")
-async def test_override_system():
-    """Test endpoint to verify override system is working"""
-    try:
-        # Test override options
-        options = get_override_options()
-        
-        # Test database tables
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        # Check if override tables exist
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='override_audit_trail'")
-        audit_table_exists = cursor.fetchone() is not None
-        
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='override_options'")
-        options_table_exists = cursor.fetchone() is not None
-        
-        # Check if override columns exist in document_status
-        cursor.execute("PRAGMA table_info(document_status)")
-        columns = [column[1] for column in cursor.fetchall()]
-        override_columns_exist = 'override_in_progress' in columns and 'override_type' in columns
-        
-        conn.close()
-        
-        return {
-            "status": "success",
-            "override_system": {
-                "audit_table_exists": audit_table_exists,
-                "options_table_exists": options_table_exists,
-                "override_columns_exist": override_columns_exist,
-                "available_options": options
-            }
-        }
-    except Exception as e:
-        return {"status": "error", "message": f"Override system test failed: {str(e)}"}
 
 # --- Database migration endpoint ---
 @app.post("/migrate-database")

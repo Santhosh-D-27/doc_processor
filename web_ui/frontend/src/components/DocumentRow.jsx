@@ -63,27 +63,21 @@ const DocumentRow = ({ doc, index, expandedRow, handleRowClick, formatStatus, fo
     const statusConfig = {
       'Ingested': { 
         class: 'status-ingested status-badge', 
-        icon: '📥' 
       },
       'Extracted': { 
         class: 'status-extracted status-badge', 
-        icon: '🔍' 
       },
       'Classified': { 
         class: 'status-classified status-badge', 
-        icon: '🏷️' 
       },
       'Routed': { 
         class: 'status-routed status-badge', 
-        icon: '✅' 
       },
       'Failed': { 
         class: 'status-failed status-badge', 
-        icon: '❌' 
       },
       'Processing': { 
-        class: 'status-processing status-badge', 
-        icon: '⚡' 
+        class: 'status-processing status-badge',  
       }
     };
 
@@ -165,7 +159,7 @@ const DocumentRow = ({ doc, index, expandedRow, handleRowClick, formatStatus, fo
           ) : (
             <span className="text-slate-500 text-sm">Unknown</span>
           )}
-          {doc.confidence && (
+          {doc.confidence >0 && (
             <div className="flex items-center mt-1">
               <div className="w-12 h-1 bg-slate-700 rounded-full overflow-hidden">
                 <motion.div
@@ -194,7 +188,7 @@ const DocumentRow = ({ doc, index, expandedRow, handleRowClick, formatStatus, fo
         >
           {formatStatusWithModernStyle(doc.status)}
           
-          {doc.override_in_progress && (
+          {doc.override_in_progress >0 && (
             <motion.div 
               className="mt-2"
               initial={{ opacity: 0, y: 10 }}

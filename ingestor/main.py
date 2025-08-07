@@ -1,17 +1,7 @@
 # ingestor/main.py - OAuth-based Ingestor Agent with Priority Queue Router
 
-import uuid
-import time
-import pika
-import json
-import base64
-import os
-import shutil
-import uvicorn
-import sqlite3
-import threading
-import secrets
-import google.generativeai as genai
+import uuid, time, pika, json, base64, os, shutil, uvicorn, sqlite3, threading, secrets
+import google.generativeai as genai, requests
 from datetime import date, datetime, UTC, timedelta
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
@@ -25,11 +15,10 @@ from googleapiclient.discovery import build
 from enum import IntEnum
 from typing import Tuple, Optional
 from urllib.parse import urlencode
-import requests
 
 load_dotenv()
 
-# Priority Configuration
+# Configuration
 class Priority(IntEnum):
     CRITICAL = 100
     HIGH = 80
@@ -37,29 +26,17 @@ class Priority(IntEnum):
     LOW = 20
     BULK = 10
 
-PRIORITY_QUEUES = {
-    Priority.CRITICAL: 'doc_received_critical',
-    Priority.HIGH: 'doc_received_high',
-    Priority.MEDIUM: 'doc_received_medium',
-    Priority.LOW: 'doc_received_low',
-    Priority.BULK: 'doc_received_bulk'
-}
+PRIORITY_QUEUES = {Priority.CRITICAL: 'doc_received_critical', Priority.HIGH: 'doc_received_high', 
+                   Priority.MEDIUM: 'doc_received_medium', Priority.LOW: 'doc_received_low', Priority.BULK: 'doc_received_bulk'}
 
-# Configuration
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-DB_NAME = 'web_ui/state.db'
-RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', '127.0.0.1')
-STATUS_QUEUE_NAME = 'document_status_queue'
-STORAGE_PATH = 'document_storage'
-MONITORED_PATH = './monitored_folder'
+# Environment Variables
+DB_NAME, RABBITMQ_HOST, STATUS_QUEUE_NAME = 'web_ui/state.db', os.getenv('RABBITMQ_HOST', '127.0.0.1'), 'document_status_queue'
+STORAGE_PATH, MONITORED_PATH = 'document_storage', './monitored_folder'
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/userinfo.email']
-
-# OAuth Configuration
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-REDIRECT_URI = os.getenv('OAUTH_REDIRECT_URI')
+GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIRECT_URI = os.getenv('GOOGLE_CLIENT_ID'), os.getenv('GOOGLE_CLIENT_SECRET'), os.getenv('OAUTH_REDIRECT_URI')
 
 # Initialize Google AI
 try:
@@ -68,123 +45,39 @@ try:
 except Exception:
     model = None
 
-# Database Functions
+# Utility Functions
+def create_html_response(title, content, is_success=False):
+    """Create standardized HTML responses"""
+    color = "green" if is_success else "red"
+    icon = "✅" if is_success else "❌"
+    return HTMLResponse(f"""
+    <html><head><title>{title}</title><script src="https://cdn.tailwindcss.com"></script></head>
+    <body class="bg-gray-100 flex items-center justify-center min-h-screen">
+        <div class="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+            <h1 class="text-2xl font-bold mb-4" style="color: {color};">{icon} {title}</h1>
+            {content}
+            <div class="mt-6">
+                <a href="/" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded mr-2">Dashboard</a>
+                <button onclick="window.close();" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded">Close</button>
+            </div>
+        </div>
+    </body></html>
+    """)
+
 def setup_oauth_database():
-    """Ensure OAuth tables exist with proper structure"""
+    """Setup OAuth database with all required tables"""
     os.makedirs(os.path.dirname(DB_NAME), exist_ok=True)
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS oauth_tokens (
-            email TEXT PRIMARY KEY,
-            access_token TEXT NOT NULL,
-            refresh_token TEXT,
-            expires_at TEXT,
-            created_at TEXT NOT NULL,
-            status TEXT DEFAULT 'active'
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS oauth_states (
-            state TEXT PRIMARY KEY,
-            email TEXT,
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS mailboxes (
-            email TEXT PRIMARY KEY,
-            status TEXT DEFAULT 'connected',
-            connected_at TEXT NOT NULL
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(DB_NAME) as conn:
+        conn.executescript('''
+            CREATE TABLE IF NOT EXISTS oauth_tokens (
+                email TEXT PRIMARY KEY, access_token TEXT NOT NULL, refresh_token TEXT,
+                expires_at TEXT, created_at TEXT NOT NULL, status TEXT DEFAULT 'active');
+            CREATE TABLE IF NOT EXISTS oauth_states (
+                state TEXT PRIMARY KEY, email TEXT, created_at TEXT NOT NULL, expires_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS mailboxes (
+                email TEXT PRIMARY KEY, status TEXT DEFAULT 'connected', connected_at TEXT NOT NULL);
+        ''')
 
-def get_oauth_mailboxes_from_db():
-    setup_oauth_database()
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT m.email, m.connected_at, t.expires_at 
-                FROM mailboxes m 
-                JOIN oauth_tokens t ON m.email = t.email 
-                WHERE m.status = 'connected' AND t.status = 'active'
-            """)
-            mailboxes = [dict(row) for row in cursor.fetchall()]
-            
-            if mailboxes:
-                print(f"[OAuth] Found {len(mailboxes)} connected mailboxes: {[m['email'] for m in mailboxes]}")
-            else:
-                print("[OAuth] No connected mailboxes found")
-                
-            return mailboxes
-    except Exception as e:
-        print(f"[OAuth] Error fetching mailboxes: {e}")
-        return []
-
-def setup_and_load_state_db(email):
-    state_db_path = f"ingestor/state_{email.replace('@', '_').replace('.', '_')}.db"
-    os.makedirs(os.path.dirname(state_db_path), exist_ok=True)
-    
-    with sqlite3.connect(state_db_path) as conn:
-        conn.execute('CREATE TABLE IF NOT EXISTS processed_emails (uid TEXT PRIMARY KEY)')
-        conn.commit()
-        cursor = conn.cursor()
-        cursor.execute("SELECT uid FROM processed_emails")
-        processed_ids = {row[0] for row in cursor.fetchall()}
-    
-    return state_db_path, processed_ids
-
-def save_processed_id(state_db_path, uid):
-    with sqlite3.connect(state_db_path) as conn:
-        conn.execute("INSERT INTO processed_emails (uid) VALUES (?)", (uid,))
-        conn.commit()
-
-def disconnect_mailbox(email: str):
-    """Disconnect and revoke OAuth for a mailbox"""
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            
-            # Get the access token for revocation
-            cursor.execute('SELECT access_token FROM oauth_tokens WHERE email = ? AND status = "active"', (email,))
-            result = cursor.fetchone()
-            
-            if result:
-                access_token = result[0]
-                
-                # Revoke the token with Google
-                try:
-                    revoke_url = f'https://oauth2.googleapis.com/revoke?token={access_token}'
-                    response = requests.post(revoke_url)
-                    if response.status_code == 200:
-                        print(f"[OAuth] Successfully revoked token for {email}")
-                    else:
-                        print(f"[OAuth] Warning: Token revocation returned status {response.status_code} for {email}")
-                except Exception as revoke_error:
-                    print(f"[OAuth] Error revoking token for {email}: {revoke_error}")
-            
-            # Update database
-            cursor.execute('UPDATE oauth_tokens SET status = "revoked" WHERE email = ?', (email,))
-            cursor.execute('UPDATE mailboxes SET status = "disconnected" WHERE email = ?', (email,))
-            conn.commit()
-            
-            print(f"[OAuth] ✅ Signed out and disconnected mailbox: {email} at {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            return True
-            
-    except Exception as e:
-        print(f"[OAuth] ❌ Error disconnecting mailbox {email}: {e}")
-        return False
-
-# Messaging Functions
 def publish_to_queue(queue_name, message):
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
@@ -205,33 +98,86 @@ def publish_message(message: dict):
     queue_name = PRIORITY_QUEUES.get(priority_score, PRIORITY_QUEUES[Priority.LOW])
     publish_to_queue(queue_name, message)
 
-# Utility Functions
 def summarize_with_llm(body: str) -> str:
     if not model or not body.strip():
         return "Could not summarize: Gemini unavailable or empty body."
     try:
-        prompt = f"Summarize the following email body in one sentence:\n\n---\n{body}\n---"
-        return model.generate_content(prompt).text.strip()
+        return model.generate_content(f"Summarize the following email body in one sentence:\n\n---\n{body}\n---").text.strip()
     except Exception as e:
         return f"Could not summarize: {e}"
 
-def decide_priority(file_size: int, sender: str = None) -> Tuple[int, str]:
+def decide_priority(file_size: int, sender: str = None, subject: str = None, is_email: bool = False) -> Tuple[int, str]:
+    """Unified priority decision for files and emails"""
     if sender:
         sender_lower = sender.lower()
-        if any(title in sender_lower for title in ["ceo", "director", "vp"]):
+        if any(title in sender_lower for title in ["ceo", "director", "vp", "president"]):
             return Priority.CRITICAL, f"Executive sender: {sender}"
-        elif any(title in sender_lower for title in ["manager", "lead"]):
+        elif any(title in sender_lower for title in ["manager", "lead", "supervisor"]):
             return Priority.HIGH, f"Management sender: {sender}"
     
+    if subject and is_email:
+        subject_lower = subject.lower()
+        if any(keyword in subject_lower for keyword in ['urgent', 'asap', 'critical', 'emergency', 'immediate']):
+            return Priority.HIGH, f"Urgent email: {subject[:30]}..."
+    
     if file_size > 5_000_000:
-        return Priority.HIGH, f"Large file: {file_size} bytes"
+        return Priority.HIGH, f"Large {'email' if is_email else 'file'}: {file_size} {'chars' if is_email else 'bytes'}"
     elif file_size > 1_000_000:
-        return Priority.MEDIUM, f"Medium file: {file_size} bytes"
+        return Priority.MEDIUM, f"Medium {'email' if is_email else 'file'}: {file_size} {'chars' if is_email else 'bytes'}"
     else:
-        return Priority.LOW, f"Standard priority: {file_size} bytes"
+        return Priority.LOW, f"Standard priority: {file_size} {'chars' if is_email else 'bytes'}"
 
-# OAuth Gmail Service
-# Replace the get_gmail_service function with this fixed version
+def get_oauth_mailboxes_from_db():
+    setup_oauth_database()
+    try:
+        with sqlite3.connect(DB_NAME) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT m.email, m.connected_at, t.expires_at FROM mailboxes m JOIN oauth_tokens t ON m.email = t.email WHERE m.status = 'connected' AND t.status = 'active'")
+            mailboxes = [dict(row) for row in cursor.fetchall()]
+            print(f"[OAuth] Found {len(mailboxes)} connected mailboxes: {[m['email'] for m in mailboxes] if mailboxes else 'None'}")
+            return mailboxes
+    except Exception as e:
+        print(f"[OAuth] Error fetching mailboxes: {e}")
+        return []
+
+def setup_and_load_state_db(email):
+    state_db_path = f"ingestor/state_{email.replace('@', '_').replace('.', '_')}.db"
+    os.makedirs(os.path.dirname(state_db_path), exist_ok=True)
+    with sqlite3.connect(state_db_path) as conn:
+        conn.execute('CREATE TABLE IF NOT EXISTS processed_emails (uid TEXT PRIMARY KEY)')
+        conn.commit()
+        processed_ids = {row[0] for row in conn.execute("SELECT uid FROM processed_emails").fetchall()}
+    return state_db_path, processed_ids
+
+def save_processed_id(state_db_path, uid):
+    with sqlite3.connect(state_db_path) as conn:
+        conn.execute("INSERT INTO processed_emails (uid) VALUES (?)", (uid,))
+        conn.commit()
+
+def disconnect_mailbox(email: str):
+    """Disconnect and revoke OAuth for a mailbox"""
+    try:
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT access_token FROM oauth_tokens WHERE email = ? AND status = "active"', (email,))
+            result = cursor.fetchone()
+            
+            if result:
+                try:
+                    response = requests.post(f'https://oauth2.googleapis.com/revoke?token={result[0]}')
+                    print(f"[OAuth] Token revocation status for {email}: {response.status_code}")
+                except Exception as e:
+                    print(f"[OAuth] Token revocation error for {email}: {e}")
+            
+            cursor.execute('UPDATE oauth_tokens SET status = "revoked" WHERE email = ?', (email,))
+            cursor.execute('UPDATE mailboxes SET status = "disconnected" WHERE email = ?', (email,))
+            conn.commit()
+            print(f"[OAuth] ✅ Disconnected mailbox: {email}")
+            return True
+    except Exception as e:
+        print(f"[OAuth] ❌ Error disconnecting mailbox {email}: {e}")
+        return False
 
 def get_gmail_service(email: str):
     try:
@@ -245,73 +191,38 @@ def get_gmail_service(email: str):
                 return None
             
             access_token, refresh_token, expires_at = result
-            credentials = Credentials(
-                token=access_token, 
-                refresh_token=refresh_token, 
-                token_uri="https://oauth2.googleapis.com/token",
-                client_id=GOOGLE_CLIENT_ID, 
-                client_secret=GOOGLE_CLIENT_SECRET, 
-                scopes=SCOPES
-            )
+            credentials = Credentials(token=access_token, refresh_token=refresh_token, token_uri="https://oauth2.googleapis.com/token",
+                                    client_id=GOOGLE_CLIENT_ID, client_secret=GOOGLE_CLIENT_SECRET, scopes=SCOPES)
             
-            # CRITICAL FIX: Google's OAuth library expects timezone-NAIVE datetimes
             if expires_at:
                 try:
-                    # Parse the stored datetime string
                     expiry_dt = datetime.fromisoformat(expires_at)
-                    
-                    # Convert timezone-aware datetime to UTC naive datetime
-                    # Google's library uses timezone-naive UTC internally
                     if expiry_dt.tzinfo is not None:
-                        # Convert to UTC and make it naive
                         expiry_dt = expiry_dt.astimezone(UTC).replace(tzinfo=None)
-                    
                     credentials.expiry = expiry_dt
-                    print(f"[OAuth] Token expires at (UTC naive): {expiry_dt}")
-                    
-                except Exception as dt_error:
-                    print(f"[OAuth] Warning: Could not parse expiry datetime '{expires_at}': {dt_error}")
-                    # If we can't parse the expiry, set it to None and let Google handle it
+                except Exception:
                     credentials.expiry = None
             
-            # Create and return the Gmail service
-            try:
-                service = build('gmail', 'v1', credentials=credentials)
-                print(f"[OAuth] ✅ Gmail service created successfully for {email}")
-                
-                # After successful service creation, check if token was refreshed
-                # and update the database if needed
-                if credentials.token != access_token:
-                    print(f"[OAuth] 🔄 Token was refreshed during service creation for {email}")
-                    new_expiry = None
-                    if credentials.expiry:
-                        # Store as timezone-aware ISO string for consistency
-                        new_expiry = credentials.expiry.replace(tzinfo=UTC).isoformat()
-                    
-                    cursor.execute(
-                        'UPDATE oauth_tokens SET access_token = ?, expires_at = ? WHERE email = ?', 
-                        (credentials.token, new_expiry, email)
-                    )
-                    conn.commit()
-                    print(f"[OAuth] ✅ Updated refreshed token in database for {email}")
-                
-                return service
-                
-            except Exception as service_error:
-                print(f"[OAuth] Error creating Gmail service for {email}: {service_error}")
-                return None
-                
+            service = build('gmail', 'v1', credentials=credentials)
+            
+            # Update token if refreshed
+            if credentials.token != access_token:
+                new_expiry = credentials.expiry.replace(tzinfo=UTC).isoformat() if credentials.expiry else None
+                cursor.execute('UPDATE oauth_tokens SET access_token = ?, expires_at = ? WHERE email = ?', (credentials.token, new_expiry, email))
+                conn.commit()
+            
+            return service
     except Exception as e:
         print(f"[OAuth] Error getting Gmail service for {email}: {e}")
         return None
 
 def extract_email_body(payload) -> str:
+    """Extract text from email payload recursively"""
     def extract_text(part):
         if 'parts' in part:
             for subpart in part['parts']:
                 text = extract_text(subpart)
-                if text:
-                    return text
+                if text: return text
         elif part['mimeType'] in ['text/plain', 'text/html'] and 'data' in part['body']:
             return base64.urlsafe_b64decode(part['body']['data']).decode('utf-8', errors='ignore')
         return ""
@@ -319,52 +230,52 @@ def extract_email_body(payload) -> str:
     if 'parts' in payload:
         for part in payload['parts']:
             text = extract_text(part)
-            if text:
-                return text
+            if text: return text
     elif payload['body'].get('data'):
         return base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8', errors='ignore')
     return ""
 
 def download_attachment(service, message_id: str, attachment_id: str) -> Optional[bytes]:
     try:
-        print(f"[OAuth] ⬇️  Downloading attachment {attachment_id} from message {message_id}")
-        attachment = service.users().messages().attachments().get(
-            userId='me', 
-            messageId=message_id, 
-            id=attachment_id
-        ).execute()
-        
-        attachment_data = base64.urlsafe_b64decode(attachment['data'])
-        print(f"[OAuth] ✅ Downloaded {len(attachment_data)} bytes")
-        return attachment_data
-        
+        attachment = service.users().messages().attachments().get(userId='me', messageId=message_id, id=attachment_id).execute()
+        return base64.urlsafe_b64decode(attachment['data'])
     except Exception as e:
         print(f"[OAuth] ❌ Error downloading attachment {attachment_id}: {e}")
         return None
+
+def create_and_publish_document(document_id, filename, storage_path, content_type, file_content, 
+                                priority_score, priority_reason, source, sender, **kwargs):
+    """Unified document creation and publishing"""
+    encoded_content = base64.b64encode(file_content if isinstance(file_content, bytes) else file_content.encode('utf-8')).decode('utf-8')
+    
+    message_data = {
+        'document_id': document_id, 'filename': filename, 'storage_path': storage_path,
+        'content_type': content_type, 'file_content': encoded_content,
+        'priority_score': priority_score, 'priority_reason': priority_reason,
+        'source': source, 'sender': sender, **kwargs
+    }
+    
+    publish_message(message_data)
+    publish_status_update(document_id, "Ingested", {
+        "filename": filename, "source": source.replace('_', ' ').title(),
+        "storage_path": storage_path, "file_content_encoded": encoded_content,
+        "content_type": content_type, "sender": sender,
+        "priority_score": priority_score, "priority_reason": priority_reason, **kwargs
+    })
 
 def process_attachment(service, message_id, part, sender, subject, summary):
     try:
         filename = part.get('filename', '')
         attachment_id = part['body'].get('attachmentId')
-        
-        if not filename or not attachment_id:
-            return False
-        
-        print(f"[OAuth] 📎 Processing attachment: {filename}")
+        if not filename or not attachment_id: return False
         
         document_id = str(uuid.uuid4())
         file_content = download_attachment(service, message_id, attachment_id)
-        
-        if not file_content:
-            print(f"[OAuth] ❌ Failed to download attachment: {filename}")
-            return False
+        if not file_content: return False
         
         file_size = len(file_content)
-        priority_score, priority_reason = decide_priority(file_size, sender)
+        priority_score, priority_reason = decide_priority(file_size, sender, subject)
         
-        print(f"[OAuth] 📊 File size: {file_size} bytes, Priority: {priority_score} ({priority_reason})")
-        
-        # Save to storage
         file_extension = os.path.splitext(filename)[1]
         storage_filename = f"{document_id}{file_extension}"
         storage_file_path = os.path.join(STORAGE_PATH, storage_filename)
@@ -373,232 +284,100 @@ def process_attachment(service, message_id, part, sender, subject, summary):
         with open(storage_file_path, "wb") as f:
             f.write(file_content)
         
-        print(f"[OAuth] 💾 Saved attachment to: {storage_file_path}")
+        create_and_publish_document(document_id, filename, storage_file_path, part.get('mimeType', 'application/octet-stream'),
+                                  file_content, priority_score, priority_reason, 'email_attachment', sender,
+                                  context=summary, email_subject=subject, document_source_type='email_with_attachment',
+                                  email_context=summary[:200] + "..." if len(summary) > 200 else summary)
         
-        # Prepare and send message
-        encoded_content = base64.b64encode(file_content).decode('utf-8')
-        message_data = {
-            'document_id': document_id, 
-            'filename': filename, 
-            'storage_path': storage_file_path,
-            'content_type': part.get('mimeType', 'application/octet-stream'), 
-            'file_content': encoded_content,
-            'priority_score': priority_score, 
-            'priority_reason': priority_reason, 
-            'source': 'email_attachment',  # ← Changed from 'oauth_email'
-            'sender': sender, 
-            'context': summary, 
-            'email_subject': subject,
-            'document_source_type': 'email_with_attachment'  # ← UI can use this
-        }
-        
-        publish_message(message_data)
-        publish_status_update(document_id, "Ingested", {
-            "filename": filename, 
-            "source": "Email Attachment",  # ← Changed from "OAuth Email"
-            "source_type": "email_with_attachment",  # ← For UI display
-            "storage_path": storage_file_path,
-            "file_content_encoded": encoded_content, 
-            "content_type": part.get('mimeType', 'application/octet-stream'),
-            "sender": sender, 
-            "email_subject": subject, 
-            "priority_score": priority_score, 
-            "priority_reason": priority_reason,
-            "email_context": summary[:200] + "..." if len(summary) > 200 else summary
-        })
-        
-        print(f"[OAuth] ✅ Successfully processed attachment: {filename} (ID: {document_id})")
+        print(f"[OAuth] ✅ Processed attachment: {filename} (ID: {document_id})")
         return True
-        
     except Exception as e:
         print(f"[OAuth] ❌ Error processing attachment {part.get('filename', 'unknown')}: {e}")
         return False
+
 def process_email_body_as_document(service, message_id, sender, subject, email_body):
-    """Process standalone email body as a document"""
     try:
         document_id = str(uuid.uuid4())
-        
-        # Clean and prepare email content
         email_content = f"Subject: {subject}\nFrom: {sender}\nDate: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n{email_body}"
         
-        # Create filename from subject (sanitized)
         safe_subject = "".join(c for c in subject if c.isalnum() or c in (' ', '-', '_')).rstrip()[:50]
         storage_filename = f"{document_id}_Email_{safe_subject}.txt"
         storage_file_path = os.path.join(STORAGE_PATH, storage_filename)
         
-        # Save email as text document
         os.makedirs(STORAGE_PATH, exist_ok=True)
         with open(storage_file_path, "w", encoding='utf-8') as f:
             f.write(email_content)
         
-        # Determine priority for email body
         body_length = len(email_body)
-        priority_score, priority_reason = decide_email_priority(sender, subject, body_length)
+        priority_score, priority_reason = decide_priority(body_length, sender, subject, is_email=True)
         
-        print(f"[OAuth] 📧 Processing email body: {subject[:50]}... (Length: {body_length} chars)")
-        
-        # Prepare message for queue
-        encoded_content = base64.b64encode(email_content.encode('utf-8')).decode('utf-8')
-        message_data = {
-            'document_id': document_id,
-            'filename': f"Email: {safe_subject}",
-            'storage_path': storage_file_path,
-            'content_type': 'text/plain',
-            'file_content': encoded_content,
-            'priority_score': priority_score,
-            'priority_reason': priority_reason,
-            'source': 'email_body',  # ← This identifies it as email-only
-            'sender': sender,
-            'email_subject': subject,
-            'email_body_length': body_length,
-            'document_source_type': 'email_only'  # ← UI can use this
-        }
-        
-        publish_message(message_data)
-        publish_status_update(document_id, "Ingested", {
-            "filename": f"Email: {safe_subject}",
-            "source": "Email Body", 
-            "source_type": "email_only",  # ← For UI display
-            "storage_path": storage_file_path,
-            "file_content_encoded": encoded_content,
-            "content_type": 'text/plain',
-            "sender": sender,
-            "email_subject": subject,
-            "priority_score": priority_score,
-            "priority_reason": priority_reason,
-            "body_length": body_length
-        })
+        create_and_publish_document(document_id, f"Email: {safe_subject}", storage_file_path, 'text/plain',
+                                  email_content, priority_score, priority_reason, 'email_body', sender,
+                                  email_subject=subject, email_body_length=body_length, 
+                                  document_source_type='email_only', source_type='email_only', body_length=body_length)
         
         print(f"[OAuth] ✅ Email body processed: {subject[:50]}... (ID: {document_id})")
         return True
-        
     except Exception as e:
         print(f"[OAuth] ❌ Error processing email body: {e}")
         return False
 
-
-def decide_email_priority(sender, subject, body_length):
-    """Determine priority for email content"""
-    sender_lower = sender.lower() if sender else ""
-    subject_lower = subject.lower() if subject else ""
-    
-    # High priority for executives or urgent content
-    if any(title in sender_lower for title in ["ceo", "director", "vp", "president"]):
-        return Priority.HIGH, f"Executive sender: {sender}"
-    
-    # High priority for urgent keywords
-    urgent_keywords = ['urgent', 'asap', 'critical', 'emergency', 'immediate', 'priority']
-    if any(keyword in subject_lower for keyword in urgent_keywords):
-        return Priority.HIGH, f"Urgent email: {subject[:30]}..."
-    
-    # Medium priority for managers or long emails
-    if any(title in sender_lower for title in ["manager", "lead", "supervisor"]):
-        return Priority.MEDIUM, f"Management sender: {sender}"
-    
-    if body_length > 1000:
-        return Priority.MEDIUM, f"Long email content: {body_length} chars"
-    
-    return Priority.LOW, f"Standard email: {body_length} chars"
-
-# Email Processing
 def process_oauth_mailbox(email_address):
     print(f"[OAuth] 📧 Checking mailbox: {email_address}")
     service = get_gmail_service(email_address)
-    if not service:
-        print(f"[OAuth] ❌ Failed to get Gmail service for {email_address}")
-        return
+    if not service: return
     
     state_db_path, processed_ids = setup_and_load_state_db(email_address)
     
     try:
         search_date = (datetime.now(UTC).date() - timedelta(days=7)).strftime("%Y/%m/%d")
-        print(f"[OAuth] 🔍 Searching for all emails after: {search_date}")
-        
-        # Unified query for all recent emails
-        results = service.users().messages().list(
-            userId='me', 
-            q=f'after:{search_date}', 
-            maxResults=100  # A reasonable limit for a single run
-        ).execute()
+        results = service.users().messages().list(userId='me', q=f'after:{search_date}', maxResults=100).execute()
         messages = results.get('messages', [])
         
-        print(f"[OAuth] 📬 Found {len(messages)} total emails to check.")
-        
-        processed_attachments_count = 0
-        processed_bodies_count = 0
+        processed_attachments_count = processed_bodies_count = 0
         
         for message_info in messages:
             message_id = message_info['id']
-            if message_id in processed_ids:
-                continue
+            if message_id in processed_ids: continue
 
             try:
                 msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
                 payload = msg['payload']
                 headers = {h['name']: h['value'] for h in payload.get('headers', [])}
-                sender = headers.get('From', 'Unknown')
-                subject = headers.get('Subject', 'No Subject')
+                sender, subject = headers.get('From', 'Unknown'), headers.get('Subject', 'No Subject')
                 
-                print(f"[OAuth] 📨 Processing email from '{sender}': '{subject}'")
-                
-                # --- 1. Process Attachments ---
+                # Process attachments
                 email_body_for_summary = extract_email_body(payload)
                 summary = summarize_with_llm(email_body_for_summary[:1000]) if email_body_for_summary else "No email body content found"
                 
-                attachments_processed_this_email = 0
-                
                 def find_and_process_attachments(part):
-                    nonlocal attachments_processed_this_email
-                    # This is a potential attachment
+                    nonlocal processed_attachments_count
                     if part.get('filename') and part.get('body', {}).get('attachmentId'):
                         if process_attachment(service, message_id, part, sender, subject, summary):
-                            attachments_processed_this_email += 1
-                    
-                    # Recurse into subparts
+                            processed_attachments_count += 1
                     if 'parts' in part:
                         for subpart in part['parts']:
                             find_and_process_attachments(subpart)
 
                 find_and_process_attachments(payload)
                 
-                if attachments_processed_this_email > 0:
-                    processed_attachments_count += attachments_processed_this_email
-                    print(f"[OAuth]   ✅ Processed {attachments_processed_this_email} attachments from this email.")
-
-                # --- 2. Process Email Body as a Separate Document ---
-                email_body_for_document = extract_email_body(payload)
-                
-                # Only process body if it's substantial
-                if email_body_for_document and len(email_body_for_document.strip()) > 50:
-                    print(f"[OAuth]   📧 Email has substantial body, processing as a document.")
-                    if process_email_body_as_document(service, message_id, sender, subject, email_body_for_document):
+                # Process email body
+                if email_body_for_summary and len(email_body_for_summary.strip()) > 50:
+                    if process_email_body_as_document(service, message_id, sender, subject, email_body_for_summary):
                         processed_bodies_count += 1
-                elif attachments_processed_this_email == 0:
-                    # Only log skipping if there were no attachments either
-                    print(f"[OAuth]   ⏭️  Skipping email: body is too short and no attachments were found.")
-
-                # Mark the entire email as processed so we don't check it again
+                
                 save_processed_id(state_db_path, message_id)
-
             except Exception as e:
                 print(f"[OAuth] ❌ Error processing email {message_id}: {e}")
-                # Continue to the next email
                 continue
         
-        # --- Final Summary ---
         total_ingested = processed_attachments_count + processed_bodies_count
         if total_ingested > 0:
-            print(f"[OAuth] 📈 Finished processing for {email_address}:")
-            print(f"[OAuth]   - Ingested {processed_attachments_count} attachments.")
-            print(f"[OAuth]   - Ingested {processed_bodies_count} email bodies.")
-            print(f"[OAuth]   - Total documents created: {total_ingested}")
+            print(f"[OAuth] 📈 Processed {processed_attachments_count} attachments, {processed_bodies_count} email bodies for {email_address}")
         else:
-            print(f"[OAuth] ℹ️  No new documents to ingest from {email_address} in this run.")
-            
+            print(f"[OAuth] ℹ️ No new documents from {email_address}")
     except Exception as e:
-        print(f"[OAuth] ❌ A critical error occurred while processing mailbox {email_address}: {e}")
-        import traceback
-        print(f"[OAuth] ❌ Full traceback: {traceback.format_exc()}")
+        print(f"[OAuth] ❌ Critical error processing {email_address}: {e}")
 
 def email_monitor_loop():
     print("[OAuth Monitor] 🚀 Starting OAuth email monitor...")
@@ -606,36 +385,25 @@ def email_monitor_loop():
         try:
             mailbox_configs = get_oauth_mailboxes_from_db()
             if mailbox_configs:
-                print(f"[OAuth Monitor] 🔄 Checking {len(mailbox_configs)} connected mailboxes...")
                 for config in mailbox_configs:
                     try:
                         process_oauth_mailbox(config['email'])
-                    except Exception as mailbox_error:
-                        print(f"[OAuth Monitor] ❌ Error processing mailbox {config['email']}: {mailbox_error}")
-                        continue
-            else:
-                print("[OAuth Monitor] ⏳ No connected mailboxes to check")
-            
-            print(f"[OAuth Monitor] ⏸️  Sleeping for 30 seconds... (Next check at {(datetime.now(UTC) + timedelta(seconds=30)).strftime('%H:%M:%S UTC')})")
-            time.sleep(10)  # Check every 30 seconds
-            
+                    except Exception as e:
+                        print(f"[OAuth Monitor] ❌ Error processing {config['email']}: {e}")
+            time.sleep(30)
         except Exception as e:
-            print(f"[OAuth Monitor] ❌ Error in monitor loop: {e}")
-            import traceback
-            print(f"[OAuth Monitor] ❌ Full traceback: {traceback.format_exc()}")
+            print(f"[OAuth Monitor] ❌ Monitor loop error: {e}")
             time.sleep(10)
 
 # File Monitoring
 class DocumentHandler(FileSystemEventHandler):
     def on_created(self, event):
-        if event.is_directory or event.src_path.endswith('.tmp'):
-            return
+        if event.is_directory or event.src_path.endswith('.tmp'): return
         
         document_id = str(uuid.uuid4())
         original_filename = os.path.basename(event.src_path)
         file_extension = os.path.splitext(original_filename)[1]
-        storage_filename = f"{document_id}{file_extension}"
-        storage_file_path = os.path.join(STORAGE_PATH, storage_filename)
+        storage_file_path = os.path.join(STORAGE_PATH, f"{document_id}{file_extension}")
         
         try:
             time.sleep(1)
@@ -645,560 +413,133 @@ class DocumentHandler(FileSystemEventHandler):
             with open(storage_file_path, 'rb') as file:
                 file_content = file.read()
             
-            file_size = len(file_content)
-            priority_score, priority_reason = decide_priority(file_size, os.path.dirname(event.src_path))
-            encoded_content = base64.b64encode(file_content).decode('utf-8')
+            priority_score, priority_reason = decide_priority(len(file_content), os.path.dirname(event.src_path))
             
-            message = {
-                'document_id': document_id, 'filename': original_filename, 'storage_path': storage_file_path,
-                'content_type': 'application/octet-stream', 'file_content': encoded_content,
-                'priority_score': priority_score, 'priority_reason': priority_reason,
-                'source': 'file_share', 'sender': 'system_fileshare_monitor'
-            }
-            
-            publish_message(message)
-            publish_status_update(document_id, "Ingested", {
-                "filename": original_filename, "source": "File Share", "storage_path": storage_file_path,
-                "file_content_encoded": encoded_content, "content_type": 'application/octet-stream',
-                "sender": 'system_fileshare_monitor', "priority_score": priority_score, "priority_reason": priority_reason
-            })
+            create_and_publish_document(document_id, original_filename, storage_file_path, 'application/octet-stream',
+                                      file_content, priority_score, priority_reason, 'file_share', 'system_fileshare_monitor')
         except Exception as e:
             publish_status_update(document_id, "Ingestion Failed", {"filename": original_filename, "error": str(e)})
 
 def start_file_monitor():
     os.makedirs(MONITORED_PATH, exist_ok=True)
-    event_handler = DocumentHandler()
     observer = Observer()
-    observer.schedule(event_handler, MONITORED_PATH, recursive=True)
+    observer.schedule(DocumentHandler(), MONITORED_PATH, recursive=True)
     observer.start()
-    
     try:
-        while True:
-            time.sleep(1)
-    except Exception:
-        observer.stop()
+        while True: time.sleep(1)
+    except: observer.stop()
     observer.join()
 
 # OAuth Endpoints
 @app.post("/oauth/disconnect/{email:path}")
 async def oauth_disconnect(email: str):
-    """Disconnect a mailbox"""
-    success = disconnect_mailbox(email)
-    return {"success": success, "email": email}
-
+    return {"success": disconnect_mailbox(email), "email": email}
 
 @app.get("/", response_class=HTMLResponse)
 async def oauth_home():
-    """OAuth management home page"""
     mailboxes = get_oauth_mailboxes_from_db()
+    mailbox_rows = "".join([f"""
+    <tr class="border-b">
+        <td class="p-4">{m['email']}</td>
+        <td class="p-4 text-green-600">Connected</td>
+        <td class="p-4">{m['connected_at']}</td>
+        <td class="p-4"><button onclick="disconnectMailbox('{m['email']}')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Disconnect</button></td>
+    </tr>""" for m in mailboxes]) or '<tr><td colspan="4" class="p-4 text-center text-gray-500">No connected mailboxes</td></tr>'
     
-    mailbox_rows = ""
-    for mailbox in mailboxes:
-        mailbox_rows += f"""
-        <tr>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{mailbox['email']}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Connected</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{mailbox['connected_at']}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button onclick="disconnectMailbox('{mailbox['email']}')" 
-                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
-                    Disconnect
-                </button>
-            </td>
-        </tr>
-        """
-    
-    if not mailbox_rows:
-        mailbox_rows = """
-        <tr>
-            <td colspan="4" class="px-6 py-4 text-center text-gray-500">
-                No connected mailboxes. Click "Connect Mailbox" to get started.
-            </td>
-        </tr>
-        """
-    
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>OAuth Gmail Manager</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-    </head>
-    <body class="bg-gray-100">
-        <div class="container mx-auto px-4 py-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h1 class="text-3xl font-bold text-gray-900 mb-6">Gmail OAuth Manager</h1>
-                
-                <div class="mb-6">
-                    <button onclick="connectMailbox()" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium">
-                        🔗 Connect New Mailbox
-                    </button>
-                </div>
-                
-                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-300">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Connected At</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            {mailbox_rows}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
+    return HTMLResponse(f"""
+    <html><head><title>OAuth Gmail Manager</title><script src="https://cdn.tailwindcss.com"></script></head>
+    <body class="bg-gray-100"><div class="container mx-auto p-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h1 class="text-3xl font-bold mb-6">Gmail OAuth Manager</h1>
+            <button onclick="window.location.href='/oauth/connect'" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded mb-6">🔗 Connect New Mailbox</button>
+            <table class="w-full border"><thead class="bg-gray-50"><tr><th class="p-4 text-left">Email</th><th class="p-4 text-left">Status</th><th class="p-4 text-left">Connected At</th><th class="p-4 text-left">Actions</th></tr></thead><tbody>{mailbox_rows}</tbody></table>
+        </div></div>
         <script>
-            function connectMailbox() {{
-                window.location.href = '/oauth/connect';
-            }}
-            
             async function disconnectMailbox(email) {{
-                if (confirm(`Are you sure you want to disconnect ${{email}}?`)) {{
-                    try {{
-                        const response = await fetch(`/oauth/disconnect/${{encodeURIComponent(email)}}`, {{
-                            method: 'POST'
-                        }});
-                        const result = await response.json();
-                        if (result.success) {{
-                            alert('Mailbox disconnected successfully!');
-                            window.location.reload();
-                        }} else {{
-                            alert('Error: ' + result.error);
-                        }}
-                    }} catch (error) {{
-                        alert('Error disconnecting mailbox: ' + error.message);
-                    }}
+                if (confirm(`Disconnect ${{email}}?`)) {{
+                    const response = await fetch(`/oauth/disconnect/${{encodeURIComponent(email)}}`, {{method: 'POST'}});
+                    const result = await response.json();
+                    result.success ? (alert('Disconnected!'), window.location.reload()) : alert('Error: ' + result.error);
                 }}
             }}
         </script>
-    </body>
-    </html>
-    """
+    </body></html>""")
 
 @app.get("/oauth/connect")
 async def oauth_connect():
-    """Start OAuth flow"""
-    state = secrets.token_urlsafe(32)
-    
-    # Store state in database
-    with sqlite3.connect(DB_NAME) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT OR REPLACE INTO oauth_states (state, email, created_at, expires_at) 
-            VALUES (?, ?, ?, ?)
-        ''', (
-            state, 
-            '', 
-            datetime.now(UTC).isoformat(),
-            (datetime.now(UTC) + timedelta(minutes=10)).isoformat()
-        ))
-        conn.commit()
-    
-    auth_url = 'https://accounts.google.com/o/oauth2/auth?' + urlencode({
-        'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': REDIRECT_URI,
-        'scope': ' '.join(SCOPES),
-        'response_type': 'code',
-        'access_type': 'offline',
-        'prompt': 'consent',
-        'state': state
-    })
-    
-    print(f"[OAuth] 🔗 Starting OAuth flow with state: {state}")
-    return RedirectResponse(url=auth_url)
-
-# Fixed OAuth callback handler - Replace the existing callback function
-
-# Fixed OAuth callback handler - Replace the existing callback function
+    try:
+        setup_oauth_database()
+        if not all([GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIRECT_URI]):
+            missing = [var for var, val in [("GOOGLE_CLIENT_ID", GOOGLE_CLIENT_ID), ("GOOGLE_CLIENT_SECRET", GOOGLE_CLIENT_SECRET), ("OAUTH_REDIRECT_URI", REDIRECT_URI)] if not val]
+            return create_html_response("Configuration Error", f"<p>Missing: {', '.join(missing)}</p>")
+        
+        state = secrets.token_urlsafe(32)
+        with sqlite3.connect(DB_NAME) as conn:
+            conn.execute('INSERT OR REPLACE INTO oauth_states (state, email, created_at, expires_at) VALUES (?, ?, ?, ?)', 
+                        (state, '', datetime.now(UTC).isoformat(), (datetime.now(UTC) + timedelta(minutes=10)).isoformat()))
+        
+        auth_url = 'https://accounts.google.com/o/oauth2/auth?' + urlencode({
+            'client_id': GOOGLE_CLIENT_ID, 'redirect_uri': REDIRECT_URI, 'scope': ' '.join(SCOPES),
+            'response_type': 'code', 'access_type': 'offline', 'prompt': 'consent', 'state': state
+        })
+        
+        return RedirectResponse(url=auth_url)
+    except Exception as e:
+        return create_html_response("Connection Error", f"<p>Could not start OAuth: {str(e)}</p>")
 
 @app.get("/oauth/gmail/callback")
 async def oauth_callback(request: Request):
-    """Handle OAuth callback with improved error handling"""
     try:
-        code = request.query_params.get('code')
-        state = request.query_params.get('state')
-        error = request.query_params.get('error')
+        code, state, error = request.query_params.get('code'), request.query_params.get('state'), request.query_params.get('error')
         
-        print(f"[OAuth Callback] Received - code: {bool(code)}, state: {state}, error: {error}")
+        if error: return create_html_response("OAuth Error", f"<p>Error: {error}</p>")
+        if not code or not state: return create_html_response("OAuth Error", "<p>Missing parameters from Google</p>")
         
-        if error:
-            print(f"[OAuth] ❌ OAuth error: {error}")
-            return HTMLResponse(f"""
-            <html>
-            <head><title>OAuth Error</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: red;">❌ OAuth Error</h1>
-                <p>Error: {error}</p>
-                <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                    Return to Dashboard
-                </a>
-            </body>
-            </html>
-            """)
-        
-        if not code or not state:
-            print(f"[OAuth] ❌ Missing parameters - code: {bool(code)}, state: {bool(state)}")
-            return HTMLResponse("""
-            <html>
-            <head><title>OAuth Error</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: red;">❌ OAuth Error</h1>
-                <p>Missing required parameters from Google</p>
-                <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                    Return to Dashboard
-                </a>
-            </body>
-            </html>
-            """)
-        
-        # Verify and cleanup state
-        state_valid = False
-        try:
-            setup_oauth_database()
-            with sqlite3.connect(DB_NAME) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT * FROM oauth_states WHERE state = ?', (state,))
-                state_record = cursor.fetchone()
-                
-                if state_record:
-                    print(f"[OAuth] ✅ Valid state found: {state}")
-                    state_valid = True
-                    cursor.execute('DELETE FROM oauth_states WHERE state = ?', (state,))
-                    conn.commit()
-                else:
-                    print(f"[OAuth] ❌ Invalid or expired state: {state}")
-        
-        except Exception as db_error:
-            print(f"[OAuth] ❌ Database error during state validation: {db_error}")
-            return HTMLResponse(f"""
-            <html>
-            <head><title>Database Error</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: red;">❌ Database Error</h1>
-                <p>Could not validate OAuth state: {str(db_error)}</p>
-                <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                    Return to Dashboard
-                </a>
-            </body>
-            </html>
-            """)
-        
-        if not state_valid:
-            return HTMLResponse("""
-            <html>
-            <head><title>OAuth Error</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: red;">❌ OAuth Error</h1>
-                <p>Invalid or expired state parameter. Please try connecting again.</p>
-                <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                    Return to Dashboard
-                </a>
-            </body>
-            </html>
-            """)
+        # Verify state
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM oauth_states WHERE state = ?', (state,))
+            if not cursor.fetchone(): return create_html_response("OAuth Error", "<p>Invalid or expired state</p>")
+            cursor.execute('DELETE FROM oauth_states WHERE state = ?', (state,))
         
         # Exchange code for tokens
-        print(f"[OAuth] 🔄 Exchanging authorization code for tokens...")
-        try:
-            token_data = {
-                'client_id': GOOGLE_CLIENT_ID,
-                'client_secret': GOOGLE_CLIENT_SECRET,
-                'code': code,
-                'grant_type': 'authorization_code',
-                'redirect_uri': REDIRECT_URI,
-            }
-            
-            response = requests.post('https://oauth2.googleapis.com/token', data=token_data, timeout=30)
-            
-            if response.status_code != 200:
-                print(f"[OAuth] ❌ Token request failed with status {response.status_code}: {response.text}")
-                return HTMLResponse(f"""
-                <html>
-                <head><title>Token Error</title></head>
-                <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                    <h1 style="color: red;">❌ Token Exchange Failed</h1>
-                    <p>Status: {response.status_code}</p>
-                    <p>Google returned an error when exchanging the authorization code</p>
-                    <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                        Try Again
-                    </a>
-                </body>
-                </html>
-                """)
-            
-            tokens = response.json()
-            
-            if 'error' in tokens:
-                print(f"[OAuth] ❌ Token exchange error: {tokens}")
-                return HTMLResponse(f"""
-                <html>
-                <head><title>Token Error</title></head>
-                <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                    <h1 style="color: red;">❌ Token Error</h1>
-                    <p>Error: {tokens.get('error', 'Unknown error')}</p>
-                    <p>Description: {tokens.get('error_description', 'No description')}</p>
-                    <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                        Try Again
-                    </a>
-                </body>
-                </html>
-                """)
-            
-            print(f"[OAuth] ✅ Successfully received tokens")
-            
-            # Get user email
-            access_token = tokens['access_token']
-            user_response = requests.get(
-                f'https://www.googleapis.com/oauth2/v2/userinfo?access_token={access_token}',
-                timeout=30
-            )
-            
-            if user_response.status_code != 200:
-                print(f"[OAuth] ❌ User info request failed: {user_response.status_code}")
-                return HTMLResponse("""
-                <html>
-                <head><title>User Info Error</title></head>
-                <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                    <h1 style="color: red;">❌ User Info Error</h1>
-                    <p>Could not retrieve user information from Google</p>
-                    <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                        Try Again
-                    </a>
-                </body>
-                </html>
-                """)
-            
-            user_info = user_response.json()
-            email = user_info.get('email')
-            
-            if not email:
-                print(f"[OAuth] ❌ No email in user info: {user_info}")
-                return HTMLResponse("""
-                <html>
-                <head><title>Email Error</title></head>
-                <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                    <h1 style="color: red;">❌ Email Error</h1>
-                    <p>Could not retrieve your email address from Google</p>
-                    <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                        Try Again
-                    </a>
-                </body>
-                </html>
-                """)
-            
-            print(f"[OAuth] ✅ Retrieved user email: {email}")
-            
-            # Store tokens and mailbox info with proper timezone handling
-            expires_at = None
-            if 'expires_in' in tokens:
-                # Create timezone-aware datetime and store as ISO string
-                expires_at = (datetime.now(UTC) + timedelta(seconds=tokens['expires_in'])).isoformat()
-                print(f"[OAuth] Token will expire at: {expires_at}")
-            
-            try:
-                with sqlite3.connect(DB_NAME) as conn:
-                    cursor = conn.cursor()
-                    
-                    # Store/update tokens
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO oauth_tokens 
-                        (email, access_token, refresh_token, expires_at, created_at, status)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (
-                        email,
-                        tokens.get('access_token'),
-                        tokens.get('refresh_token'),
-                        expires_at,
-                        datetime.now(UTC).isoformat(),
-                        'active'
-                    ))
-                    
-                    # Store/update mailbox
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO mailboxes (email, status, connected_at)
-                        VALUES (?, ?, ?)
-                    ''', (
-                        email,
-                        'connected',
-                        datetime.now(UTC).isoformat()
-                    ))
-                    
-                    conn.commit()
-                    print(f"[OAuth] ✅ Successfully stored tokens and mailbox info for {email}")
-                
-            except Exception as db_error:
-                print(f"[OAuth] ❌ Database error storing tokens: {db_error}")
-                return HTMLResponse(f"""
-                <html>
-                <head><title>Storage Error</title></head>
-                <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                    <h1 style="color: red;">❌ Storage Error</h1>
-                    <p>Could not save your OAuth tokens: {str(db_error)}</p>
-                    <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                        Try Again
-                    </a>
-                </body>
-                </html>
-                """)
-            
-            print(f"[OAuth] ✅ Successfully connected mailbox: {email} at {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            
-            return HTMLResponse(f"""
-            <html>
-            <head><title>Success</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: green;">✅ Success!</h1>
-                <p>Mailbox <strong>{email}</strong> has been connected successfully.</p>
-                <p>The system will now monitor this mailbox for email attachments.</p>
-                <div style="margin: 30px 0;">
-                    <a href="/" style="background: #28a745; color: white; text-decoration: none; padding: 12px 24px; border-radius: 5px; margin: 0 10px;">
-                        Return to Dashboard
-                    </a>
-                    <button onclick="window.close();" style="background: #6c757d; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin: 0 10px;">
-                        Close Window
-                    </button>
-                </div>
-            </body>
-            </html>
-            """)
-            
-        except Exception as token_error:
-            print(f"[OAuth] ❌ Error during token exchange: {token_error}")
-            return HTMLResponse(f"""
-            <html>
-            <head><title>Token Exchange Error</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: red;">❌ Token Exchange Error</h1>
-                <p>An error occurred: {str(token_error)}</p>
-                <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                    Try Again
-                </a>
-            </body>
-            </html>
-            """)
-            
-    except Exception as e:
-        print(f"[OAuth] ❌ Critical error in callback: {e}")
-        return HTMLResponse(f"""
-        <html>
-        <head><title>Critical Error</title></head>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-            <h1 style="color: red;">❌ Critical Error</h1>
-            <p>A critical error occurred: {str(e)}</p>
-            <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                Return to Dashboard
-            </a>
-        </body>
-        </html>
-        """)
-# Also add this improved connect endpoint
-@app.get("/oauth/connect")
-async def oauth_connect():
-    """Start OAuth flow with improved error handling"""
-    try:
-        # Ensure database is set up
-        setup_oauth_database()
+        token_data = {'client_id': GOOGLE_CLIENT_ID, 'client_secret': GOOGLE_CLIENT_SECRET, 'code': code, 
+                     'grant_type': 'authorization_code', 'redirect_uri': REDIRECT_URI}
         
-        state = secrets.token_urlsafe(32)
-        print(f"[OAuth] 🔗 Generated state: {state}")
+        response = requests.post('https://oauth2.googleapis.com/token', data=token_data, timeout=30)
+        if response.status_code != 200: return create_html_response("Token Error", f"<p>Status: {response.status_code}</p>")
         
-        # Store state in database
-        try:
-            with sqlite3.connect(DB_NAME) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT OR REPLACE INTO oauth_states (state, email, created_at, expires_at) 
-                    VALUES (?, ?, ?, ?)
-                ''', (
-                    state, 
-                    '', 
-                    datetime.now(UTC).isoformat(),
-                    (datetime.now(UTC) + timedelta(minutes=10)).isoformat()
-                ))
-                conn.commit()
-                print(f"[OAuth] ✅ State stored in database")
-        except Exception as db_error:
-            print(f"[OAuth] ❌ Database error storing state: {db_error}")
-            return HTMLResponse(f"""
-            <html>
-            <head><title>Database Error</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: red;">❌ Database Error</h1>
-                <p>Could not initialize OAuth flow: {str(db_error)}</p>
-                <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                    Return to Dashboard
-                </a>
-            </body>
-            </html>
-            """)
+        tokens = response.json()
+        if 'error' in tokens: return create_html_response("Token Error", f"<p>Error: {tokens.get('error')}</p>")
         
-        # Validate required environment variables
-        if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET or not REDIRECT_URI:
-            missing = []
-            if not GOOGLE_CLIENT_ID: missing.append("GOOGLE_CLIENT_ID")
-            if not GOOGLE_CLIENT_SECRET: missing.append("GOOGLE_CLIENT_SECRET") 
-            if not REDIRECT_URI: missing.append("OAUTH_REDIRECT_URI")
-            
-            print(f"[OAuth] ❌ Missing environment variables: {missing}")
-            return HTMLResponse(f"""
-            <html>
-            <head><title>Configuration Error</title></head>
-            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-                <h1 style="color: red;">❌ Configuration Error</h1>
-                <p>Missing required environment variables: {', '.join(missing)}</p>
-                <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                    Return to Dashboard
-                </a>
-            </body>
-            </html>
-            """)
+        # Get user email
+        user_response = requests.get(f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={tokens['access_token']}", timeout=30)
+        if user_response.status_code != 200: return create_html_response("User Info Error", "<p>Could not retrieve user info</p>")
         
-        auth_url = 'https://accounts.google.com/o/oauth2/auth?' + urlencode({
-            'client_id': GOOGLE_CLIENT_ID,
-            'redirect_uri': REDIRECT_URI,
-            'scope': ' '.join(SCOPES),
-            'response_type': 'code',
-            'access_type': 'offline',
-            'prompt': 'consent',
-            'state': state
-        })
+        email = user_response.json().get('email')
+        if not email: return create_html_response("Email Error", "<p>Could not retrieve email</p>")
         
-        print(f"[OAuth] 🔗 Redirecting to: {auth_url[:100]}...")
-        return RedirectResponse(url=auth_url)
+        # Store tokens
+        expires_at = (datetime.now(UTC) + timedelta(seconds=tokens['expires_in'])).isoformat() if 'expires_in' in tokens else None
+        
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute('INSERT OR REPLACE INTO oauth_tokens (email, access_token, refresh_token, expires_at, created_at, status) VALUES (?, ?, ?, ?, ?, ?)',
+                          (email, tokens.get('access_token'), tokens.get('refresh_token'), expires_at, datetime.now(UTC).isoformat(), 'active'))
+            cursor.execute('INSERT OR REPLACE INTO mailboxes (email, status, connected_at) VALUES (?, ?, ?)',
+                          (email, 'connected', datetime.now(UTC).isoformat()))
+        
+        return create_html_response("Success", f"<p>Mailbox <strong>{email}</strong> connected successfully!</p>", True)
         
     except Exception as e:
-        print(f"[OAuth] ❌ Error in connect endpoint: {e}")
-        return HTMLResponse(f"""
-        <html>
-        <head><title>Connection Error</title></head>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-            <h1 style="color: red;">❌ Connection Error</h1>
-            <p>Could not start OAuth flow: {str(e)}</p>
-            <a href="/" style="background: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px;">
-                Return to Dashboard
-            </a>
-        </body>
-        </html>
-        """)
-
-
-# Add a debug endpoint to check configuration
+        return create_html_response("Critical Error", f"<p>Error: {str(e)}</p>")
 
 # API Endpoints
 @app.post("/upload")
 async def upload_document(sender: str = Form(None), file: UploadFile = File(...)):
     document_id = str(uuid.uuid4())
-    original_filename = file.filename
-    file_extension = os.path.splitext(original_filename)[1]
-    storage_filename = f"{document_id}{file_extension}"
-    file_path = os.path.join(STORAGE_PATH, storage_filename)
+    file_extension = os.path.splitext(file.filename)[1]
+    file_path = os.path.join(STORAGE_PATH, f"{document_id}{file_extension}")
     
     try:
         file_content = await file.read()
@@ -1206,32 +547,15 @@ async def upload_document(sender: str = Form(None), file: UploadFile = File(...)
         with open(file_path, "wb") as f:
             f.write(file_content)
         
-        file_size = len(file_content)
-        priority_score, priority_reason = decide_priority(file_size, sender)
-        encoded_file_content = base64.b64encode(file_content).decode('utf-8')
+        priority_score, priority_reason = decide_priority(len(file_content), sender)
         
-        message = {
-            'document_id': document_id, 'filename': original_filename, 'storage_path': file_path,
-            'content_type': file.content_type, 'file_content': encoded_file_content,
-            'priority_score': priority_score, 'priority_reason': priority_reason,
-            'source': 'api_upload', 'sender': sender
-        }
+        create_and_publish_document(document_id, file.filename, file_path, file.content_type,
+                                  file_content, priority_score, priority_reason, 'api_upload', sender)
         
-        publish_message(message)
-        publish_status_update(document_id, "Ingested", {
-            "filename": original_filename, "source": "API Upload", "storage_path": file_path,
-            "file_content_encoded": encoded_file_content, "content_type": file.content_type,
-            "sender": sender, "priority_score": priority_score, "priority_reason": priority_reason
-        })
-        
-        return {"document_id": document_id, "filename": original_filename, "status": "published"}
+        return {"document_id": document_id, "filename": file.filename, "status": "published"}
     except Exception as e:
-        publish_status_update(document_id, "Ingestion Failed", {"filename": original_filename, "error": str(e)})
+        publish_status_update(document_id, "Ingestion Failed", {"filename": file.filename, "error": str(e)})
         return {"error": str(e), "status": "failed_to_publish"}
-
-
-
-
 
 @app.get("/health")
 async def health_check():
@@ -1263,8 +587,6 @@ async def oauth_status():
 @app.on_event("startup")
 async def startup_event():
     print("[Ingestor] 🚀 Starting OAuth-based Ingestor Agent...")
-    
-    # Setup database
     setup_oauth_database()
     
     # Setup RabbitMQ queues

@@ -1,28 +1,14 @@
 # extractor/main.py - Priority-Aware Multi-Threaded Document Extractor
-
-import time
-import pika
-import json
-import base64
-import pytesseract
-import os
-import threading
-import queue
-import logging
-import signal
-import sys
+import re, time, pika, json, base64, pytesseract, os, threading, queue, logging, signal, sys, io, docx, groq
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Dict, Optional
 from enum import IntEnum
-import google.generativeai as genai
-from pdf2image import convert_from_bytes
-from PIL import Image
-import io
 from datetime import datetime, UTC
 from dotenv import load_dotenv
-import docx
-import groq
+from pdf2image import convert_from_bytes
+from PIL import Image
+import google.generativeai as genai
 
 load_dotenv()
 
@@ -35,16 +21,10 @@ class Priority(IntEnum):
     BULK = 10
 
 PRIORITY_QUEUES = {
-    Priority.CRITICAL: 'doc_received_critical',
-    Priority.HIGH: 'doc_received_high',
-    Priority.MEDIUM: 'doc_received_medium',
-    Priority.LOW: 'doc_received_low',
-    Priority.BULK: 'doc_received_bulk'
+    Priority.CRITICAL: 'doc_received_critical', Priority.HIGH: 'doc_received_high',
+    Priority.MEDIUM: 'doc_received_medium', Priority.LOW: 'doc_received_low', Priority.BULK: 'doc_received_bulk'
 }
-
-PRIORITY_THREAD_ALLOCATION = {
-    Priority.CRITICAL: 4, Priority.HIGH: 3, Priority.MEDIUM: 2, Priority.LOW: 1, Priority.BULK: 1
-}
+PRIORITY_THREAD_ALLOCATION = {Priority.CRITICAL: 4, Priority.HIGH: 3, Priority.MEDIUM: 2, Priority.LOW: 1, Priority.BULK: 1}
 
 # Configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -58,15 +38,12 @@ MAX_WORKERS = int(os.getenv('EXTRACTOR_MAX_WORKERS', '11'))
 PREFETCH_COUNT = int(os.getenv('EXTRACTOR_PREFETCH_COUNT', '1'))
 MAX_TEXT_LENGTH = int(os.getenv('MAX_TEXT_LENGTH', '50000'))
 
-# Initialize OCR
+# Initialize OCR and LLM clients
 tesseract_path = os.getenv("TESSERACT_CMD_PATH")
 if tesseract_path and os.path.exists(tesseract_path):
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
-# Initialize LLM clients
-groq_client = None
-gemini_model = None
-
+groq_client = gemini_model = None
 try:
     groq_client = groq.Groq(api_key=os.environ["GROQ_API_KEY"])
     logger.info("Groq client initialized (Primary)")
@@ -100,30 +77,25 @@ class ExtractionResult:
     filename: str
     extracted_text: str = ""
     summary: str = ""
-    priority_content: dict = None  # Now includes entities, confidence scores, etc.
+    priority_content: dict = None
     error: str = ""
     processing_time: float = 0.0
     
     def __post_init__(self):
         if self.priority_content is None:
             self.priority_content = {
-                'urgency_level': 'low',
-                'entities': {},
-                'extraction_confidence': 0.0,
-                'text_quality_score': 0.0
+                'urgency_level': 'low', 'entities': {}, 'extraction_confidence': 0.0, 'text_quality_score': 0.0
             }
-# Connection Management
+
+# Connection and Publishing
 def get_rabbitmq_connection():
-    """Creates and returns a new RabbitMQ connection."""
     try:
         return pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=600))
     except pika.exceptions.AMQPConnectionError as e:
         logger.error(f"Failed to create RabbitMQ connection: {e}")
         return None
 
-# Core Functions
 def publish_message(queue_name: str, message: dict):
-    """Publishes a message to a given queue, creating a new connection."""
     connection = get_rabbitmq_connection()
     if not connection:
         logger.error(f"Cannot publish to {queue_name}, no connection.")
@@ -131,19 +103,16 @@ def publish_message(queue_name: str, message: dict):
     try:
         with connection.channel() as channel:
             channel.queue_declare(queue=queue_name, durable=True)
-            channel.basic_publish(
-                exchange='', 
-                routing_key=queue_name, 
-                body=json.dumps(message),
-                properties=pika.BasicProperties(delivery_mode=2) # Make message persistent
-            )
+            channel.basic_publish(exchange='', routing_key=queue_name, body=json.dumps(message),
+                                properties=pika.BasicProperties(delivery_mode=2))
     except Exception as e:
         logger.error(f"Failed to publish to {queue_name}: {e}")
     finally:
         if connection.is_open:
             connection.close()
 
-def publish_status_update(doc_id: str, status: str, details: dict = None, priority_score: int = None, priority_reason: str = None, filename:str=None):
+def publish_status_update(doc_id: str, status: str, details: dict = None, priority_score: int = None, 
+                         priority_reason: str = None, filename: str = None):
     if details is None:
         details = {}
     if priority_score is not None:
@@ -152,57 +121,40 @@ def publish_status_update(doc_id: str, status: str, details: dict = None, priori
         details['priority_reason'] = priority_reason
     
     message = {
-        "document_id": doc_id, 
-        "filename": filename,  # ADD THIS
-        "status": status, 
-        "last_updated": datetime.now(UTC).isoformat(),  # CHANGE from "timestamp"
-        "details": details
+        "document_id": doc_id, "filename": filename, "status": status,
+        "last_updated": datetime.now(UTC).isoformat(), "details": details
     }
     publish_message(STATUS_QUEUE_NAME, message)
 
 def publish_doc_text_event(doc_id: str, filename: str, cleaned_text: str, summary: str, 
                           extraction_confidence: float, text_quality_score: float, reasoning: str):
-    """Publish doc.text event as per specification"""
     message = {
-        "event_type": "doc.text",
-        "document_id": doc_id,
-        "filename": filename,
-        "cleaned_text": cleaned_text,
-        "summary": summary,
-        "extraction_confidence": extraction_confidence,
-        "text_quality_score": text_quality_score,
-        "reasoning": reasoning,
+        "event_type": "doc.text", "document_id": doc_id, "filename": filename,
+        "cleaned_text": cleaned_text, "summary": summary, "extraction_confidence": extraction_confidence,
+        "text_quality_score": text_quality_score, "reasoning": reasoning,
         "timestamp": datetime.now(UTC).isoformat()
     }
     publish_message('doc_text_events', message)
 
 def publish_doc_entities_event(doc_id: str, filename: str, entities: dict, extraction_confidence: float):
-    """Publish doc.entities event as per specification"""
     message = {
-        "event_type": "doc.entities",
-        "document_id": doc_id,
-        "filename": filename,
-        "entities": entities,
-        "extraction_confidence": extraction_confidence,
+        "event_type": "doc.entities", "document_id": doc_id, "filename": filename,
+        "entities": entities, "extraction_confidence": extraction_confidence,
         "timestamp": datetime.now(UTC).isoformat()
     }
     publish_message('doc_entities_events', message)
 
-
+# Text extraction
 def extract_text_from_document(content_bytes: bytes, content_type: str, filename: str, override_params: dict = None) -> str:
     if not content_bytes:
         raise ValueError("Empty document content")
     
-    # Handle override parameters
-    if override_params is None:
-        override_params = {}
-    
+    override_params = override_params or {}
     ocr_engine = override_params.get('ocr_engine', 'default')
     dpi = override_params.get('dpi', 300)
     language = override_params.get('language', 'eng')
     manual_text = override_params.get('manual_text')
     
-    # If manual text is provided, use it directly
     if manual_text and manual_text.strip():
         return manual_text.strip()
     
@@ -211,31 +163,18 @@ def extract_text_from_document(content_bytes: bytes, content_type: str, filename
     if 'pdf' in content_type or file_extension == '.pdf':
         poppler_path = os.getenv("POPPLER_PATH")
         convert_kwargs = {'poppler_path': poppler_path} if poppler_path and os.path.exists(poppler_path) else {}
-        
-        # Apply DPI override
         if dpi != 300:
             convert_kwargs['dpi'] = dpi
         
         images = convert_from_bytes(content_bytes, **convert_kwargs)
-        
-        # Apply OCR engine and language overrides
-        if ocr_engine == 'tesseract':
-            text_parts = [pytesseract.image_to_string(image, config=f'--psm 6 -l {language}') for image in images]
-        else:
-            # Default OCR processing
-            text_parts = [pytesseract.image_to_string(image, config='--psm 6') for image in images]
-        
+        config = f'--psm 6 -l {language}' if ocr_engine == 'tesseract' else '--psm 6'
+        text_parts = [pytesseract.image_to_string(image, config=config) for image in images]
         text = '\n'.join(text_parts)
             
     elif 'image' in content_type or file_extension in ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']:
         image = Image.open(io.BytesIO(content_bytes))
-        
-        # Apply OCR engine and language overrides
-        if ocr_engine == 'tesseract':
-            text = pytesseract.image_to_string(image, config=f'--psm 6 -l {language}')
-        else:
-            # Default OCR processing
-            text = pytesseract.image_to_string(image, config='--psm 6')
+        config = f'--psm 6 -l {language}' if ocr_engine == 'tesseract' else '--psm 6'
+        text = pytesseract.image_to_string(image, config=config)
         
     elif 'vnd.openxmlformats-officedocument.wordprocessingml.document' in content_type or file_extension == '.docx':
         doc = docx.Document(io.BytesIO(content_bytes))
@@ -263,22 +202,16 @@ def extract_text_from_document(content_bytes: bytes, content_type: str, filename
 def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> dict:
     if not groq_client and not gemini_model:
         return {
-            "cleaned_text": text, 
-            "summary": "LLM analysis unavailable", 
-            "priority_content": {"urgency_level": "low"},
-            "entities": {},
-            "extraction_confidence": 0.0,
-            "text_quality_score": 0.0
+            "cleaned_text": text, "summary": "LLM analysis unavailable", 
+            "priority_content": {"urgency_level": "low"}, "entities": {},
+            "extraction_confidence": 0.0, "text_quality_score": 0.0
         }
     
     if len(text.strip()) < 10:
         return {
-            "cleaned_text": text, 
-            "summary": "Document too short for analysis", 
-            "priority_content": {"urgency_level": "low"},
-            "entities": {},
-            "extraction_confidence": 0.0,
-            "text_quality_score": 0.1
+            "cleaned_text": text, "summary": "Document too short for analysis", 
+            "priority_content": {"urgency_level": "low"}, "entities": {},
+            "extraction_confidence": 0.0, "text_quality_score": 0.1
         }
     
     processing_text = text[:MAX_TEXT_LENGTH]
@@ -296,24 +229,27 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
     
     Analyze this document and provide JSON with:
     1. Cleaned text (fix OCR errors and assess text quality)
-    2. 2-3 sentence summary
+    
     3. Extract entities in standardized format
     4. Assess extraction confidence and text quality
     
-    Return as valid JSON:
+    Return ONLY valid JSON (no markdown formatting):
     {{
       "cleaned_text": "corrected text",
       "summary": "brief summary",
       "priority_content": {{
-        "deadlines": ["list"], "key_parties": ["list"], "financial_commitments": ["list"],
-        "action_items": ["list"], "urgency_level": "high/medium/low"
+        "deadlines": [],
+        "key_parties": [],
+        "financial_commitments": [],
+        "action_items": [],
+        "urgency_level": "high"
       }},
       "entities": {{
-        "dates": ["{{'value': '2024-01-15', 'type': 'deadline', 'confidence': 0.95}}"],
-        "parties": ["{{'name': 'Company ABC', 'role': 'contractor', 'confidence': 0.90}}"],
-        "amounts": ["{{'value': '$50,000', 'currency': 'USD', 'type': 'payment', 'confidence': 0.85}}"],
-        "locations": ["{{'name': 'New York', 'type': 'city', 'confidence': 0.80}}"],
-        "organizations": ["{{'name': 'ABC Corp', 'type': 'company', 'confidence': 0.90}}"]
+        "dates": [{{"value": "2024-01-15", "type": "deadline", "confidence": 0.95}}],
+        "parties": [{{"name": "Company ABC", "role": "contractor", "confidence": 0.90}}],
+        "amounts": [{{"value": "$50,000", "currency": "USD", "type": "payment", "confidence": 0.85}}],
+        "locations": [{{"name": "New York", "type": "city", "confidence": 0.80}}],
+        "organizations": [{{"name": "ABC Corp", "type": "company", "confidence": 0.90}}]
       }},
       "extraction_confidence": 0.85,
       "text_quality_score": 0.90,
@@ -323,6 +259,43 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
     Document: {processing_text}
     """
     
+    def clean_json_response(response_text: str) -> str:
+        if not response_text:
+            return ""
+        
+        response_text = response_text.strip()
+        response_text = re.sub(r'^```(?:json)?\s*', '', response_text, flags=re.IGNORECASE)
+        response_text = re.sub(r'\s*```$', '', response_text)
+        
+        start_idx = response_text.find('{')
+        end_idx = response_text.rfind('}')
+        
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            json_text = response_text[start_idx:end_idx + 1]
+            json_text = re.sub(r',\s*}', '}', json_text)
+            json_text = re.sub(r',\s*]', ']', json_text)
+            return json_text
+        return ""
+    
+    def validate_and_fix_result(result: dict) -> dict:
+        result.setdefault('cleaned_text', text)
+        result.setdefault('summary', 'Automated extraction completed')
+        
+        priority_content = result.setdefault('priority_content', {})
+        for key in ['deadlines', 'key_parties', 'financial_commitments', 'action_items']:
+            priority_content.setdefault(key, [])
+        priority_content.setdefault('urgency_level', 'low')
+        
+        entities = result.setdefault('entities', {})
+        for key in ['dates', 'parties', 'amounts', 'locations', 'organizations']:
+            entities.setdefault(key, [])
+        
+        result.setdefault('extraction_confidence', 0.7)
+        result.setdefault('text_quality_score', 0.8)
+        result.setdefault('reasoning', 'Automated extraction completed')
+        
+        return result
+    
     # Try Groq first
     if groq_client:
         try:
@@ -330,30 +303,14 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
                 messages=[{"role": "user", "content": prompt}],
                 model="llama-3.1-8b-instant", temperature=0.1, max_tokens=3072
             )
-            json_text = response.choices[0].message.content.strip().lstrip('```json').rstrip('```').strip()
             
-            if '{' in json_text and '}' in json_text:
-                start, end = json_text.find('{'), json_text.rfind('}') + 1
-                json_text = json_text[start:end]
-            
-            result = json.loads(json_text)
-            
-            # Ensure required structure with backward compatibility
-            if all(key in result for key in ['cleaned_text', 'summary']):
-                # Ensure priority_content exists (backward compatibility)
-                if 'priority_content' not in result:
-                    result['priority_content'] = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
-                
-                # Ensure entities exists (new requirement)
-                if 'entities' not in result:
-                    result['entities'] = {'dates': [], 'parties': [], 'amounts': [], 'locations': [], 'organizations': []}
-                
-                # Add confidence scores if missing
-                result.setdefault('extraction_confidence', 0.7)
-                result.setdefault('text_quality_score', 0.8)
-                result.setdefault('reasoning', 'Automated extraction completed')
-                
-                return result
+            json_text = clean_json_response(response.choices[0].message.content)
+            if json_text:
+                try:
+                    result = json.loads(json_text)
+                    return validate_and_fix_result(result)
+                except json.JSONDecodeError as json_error:
+                    logger.warning(f"Groq JSON parsing failed: {json_error}")
         except Exception as e:
             logger.warning(f"Groq LLM analysis failed: {e}")
     
@@ -361,35 +318,32 @@ def analyze_document_content_with_llm(text: str, priority_score: int = 20) -> di
     if gemini_model:
         try:
             response = gemini_model.generate_content(prompt)
-            json_text = response.text.strip().lstrip('```json').rstrip('```').strip()
-            result = json.loads(json_text)
-            
-            if all(key in result for key in ['cleaned_text', 'summary']):
-                # Same structure validation as above
-                if 'priority_content' not in result:
-                    result['priority_content'] = {'deadlines': [], 'key_parties': [], 'financial_commitments': [], 'action_items': [], 'urgency_level': 'low'}
-                
-                if 'entities' not in result:
-                    result['entities'] = {'dates': [], 'parties': [], 'amounts': [], 'locations': [], 'organizations': []}
-                
-                result.setdefault('extraction_confidence', 0.7)
-                result.setdefault('text_quality_score', 0.8)
-                result.setdefault('reasoning', 'Automated extraction completed')
-                
-                return result
+            json_text = clean_json_response(response.text)
+            if json_text:
+                try:
+                    result = json.loads(json_text)
+                    return validate_and_fix_result(result)
+                except json.JSONDecodeError as json_error:
+                    logger.warning(f"Gemini JSON parsing failed: {json_error}")
         except Exception as e:
-            logger.warning(f"Gemini LLM analysis failed: {e}")
+            if "429" in str(e) or "quota" in str(e).lower():
+                logger.warning("Gemini rate limit exceeded, using fallback")
+            else:
+                logger.warning(f"Gemini LLM analysis failed: {e}")
     
-    # Complete fallback
-    return {
+    logger.info("Using fallback analysis due to LLM issues")
+    return validate_and_fix_result({
         "cleaned_text": text, 
-        "summary": "LLM analysis failed", 
-        "priority_content": {"urgency_level": "low"},
+        "summary": f"Document processed successfully. Length: {len(text)} characters.", 
+        "priority_content": {
+            "deadlines": [], "key_parties": [], "financial_commitments": [], "action_items": [],
+            "urgency_level": "medium" if priority_score >= Priority.HIGH else "low"
+        },
         "entities": {'dates': [], 'parties': [], 'amounts': [], 'locations': [], 'organizations': []},
-        "extraction_confidence": 0.3,
-        "text_quality_score": 0.5,
-        "reasoning": "Fallback: LLM processing unavailable"
-    }
+        "extraction_confidence": 0.5, "text_quality_score": 0.6,
+        "reasoning": "Fallback: LLM processing unavailable, used rule-based extraction"
+    })
+
 # Processing Engine
 class PriorityProcessor:
     def __init__(self):
@@ -405,8 +359,6 @@ class PriorityProcessor:
             
             file_content_bytes = base64.b64decode(message['file_content'])
             content_type = message.get('content_type', 'application/octet-stream')
-            
-            # Get override parameters if this is a manual re-extract
             override_params = message.get('override_parameters', {})
             
             raw_text = extract_text_from_document(file_content_bytes, content_type, task.filename, override_params)
@@ -427,7 +379,6 @@ class PriorityProcessor:
             
         except Exception as e:
             processing_time = time.time() - start_time
-            
             with self.stats_lock:
                 self.stats['errors'] += 1
             
@@ -587,9 +538,7 @@ class PriorityExtractionService:
             self.consumer_threads[priority] = consumer_thread
             consumer_thread.start()
         
-        # Stats reporter
         threading.Thread(target=self.stats_reporter, daemon=True).start()
-        
         logger.info("All consumers started. Processing documents...")
         
         try:
@@ -611,10 +560,8 @@ class PriorityExtractionService:
     def stop(self):
         logger.info("Stopping Extraction Service...")
         self.is_running = False
-        
         for consumer in self.consumers.values():
             consumer.stop()
-        
         logger.info("Extraction Service stopped")
 
 # Main Entry Point
