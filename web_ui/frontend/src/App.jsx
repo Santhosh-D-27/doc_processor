@@ -273,7 +273,7 @@ const Dashboard = () => {
     if (!destination) return 'Not routed';
     return destination
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map(word => word.toUpperCase())
       .join(' ');
   }, []);
 
@@ -288,13 +288,13 @@ const Dashboard = () => {
           transition={{ duration: 0.6 }}
         >
           <motion.div
-            className="relative mb-8"
+            className="relative w-24 h-24 mx-auto mb-8"
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           >
-            <div className="w-24 h-24 border-4 border-slate-700 border-t-cyan-500 rounded-full"></div>
+            <div className="w-full h-full border-4 border-slate-700 border-t-cyan-500 rounded-full"></div>
             <motion.div
-              className="absolute inset-0 w-24 h-24 border-4 border-transparent border-t-purple-500 rounded-full"
+              className="absolute inset-0 w-full h-full border-4 border-transparent border-t-purple-500 rounded-full"
               animate={{ rotate: -360 }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             />

@@ -108,31 +108,31 @@ const DocumentTable = ({
               transition={{ duration: 0.4 }}
             >
               <tr>
-                <th className="text-left font-bold text-slate-200 py-4 px-6">
+                <th className="text-left font-bold text-slate-200 py-4 px-6" style={{ minWidth: '250px', width: '30%' }}>
                   <div className="flex items-center space-x-2">
                     <span>📄</span>
                     <span>Document Name</span>
                   </div>
                 </th>
-                <th className="text-left font-bold text-slate-200 py-4 px-6">
+                <th className="text-left font-bold text-slate-200 py-4 px-6" style={{ minWidth: '150px', width: '20%' }}>
                   <div className="flex items-center space-x-2">
                     <span>🏷️</span>
                     <span>Type</span>
                   </div>
                 </th>
-                <th className="text-left font-bold text-slate-200 py-4 px-6">
+                <th className="text-left font-bold text-slate-200 py-4 px-6" style={{ minWidth: '150px', width: '20%' }}>
                   <div className="flex items-center space-x-2">
                     <span>⚡</span>
                     <span>Status</span>
                   </div>
                 </th>
-                <th className="text-left font-bold text-slate-200 py-4 px-6">
+                <th className="text-left font-bold text-slate-200 py-4 px-6" style={{ minWidth: '150px', width: '15%' }}>
                   <div className="flex items-center space-x-2">
                     <span>🎯</span>
                     <span>Routed To</span>
                   </div>
                 </th>
-                <th className="text-left font-bold text-slate-200 py-4 px-6">
+                <th className="text-left font-bold text-slate-200 py-4 px-6" style={{ minWidth: '150px', width: '15%' }}>
                   <div className="flex items-center space-x-2">
                     <span>🕐</span>
                     <span>Last Updated</span>

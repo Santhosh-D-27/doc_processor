@@ -54,7 +54,8 @@ const DocumentRow = ({ doc, index, expandedRow, handleRowClick, formatStatus, fo
       'MEMO': 'text-orange-400',
       'AGREEMENT': 'text-red-400',
       'GRIEVANCE': 'text-pink-400',
-      'ID_PROOF': 'text-cyan-400'
+      'ID_PROOF': 'text-cyan-400',
+      'HUMAN_REVIEW_NEEDED': 'text-gray-400',
     };
     return colorMap[docType] || 'text-slate-400';
   };
@@ -222,7 +223,7 @@ const DocumentRow = ({ doc, index, expandedRow, handleRowClick, formatStatus, fo
         >
           {doc.routing_destination ? (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-300 border border-blue-500/30">
-              <span className="mr-1">🎯</span>
+              
               {formatRoutingDestination(doc.routing_destination)}
             </span>
           ) : (

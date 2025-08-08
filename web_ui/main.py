@@ -639,11 +639,11 @@ app.add_middleware(
 
 # --- API Endpoints ---
 @app.get("/documents")
-def get_all_documents():
+def get_all_documents(limit: int = 1000):
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM document_status ORDER BY last_updated DESC LIMIT 100")
+    cursor.execute("SELECT * FROM document_status ORDER BY last_updated DESC LIMIT ?", (limit,))
     docs = cursor.fetchall()
     conn.close()
     return [dict(doc) for doc in docs]

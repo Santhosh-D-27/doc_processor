@@ -1,13 +1,13 @@
 // frontend/src/components/ProgressBar.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const ProgressBar = ({ history = [] }) => {
   const [hoveredStage, setHoveredStage] = useState(null);
-  
-  const safeHistory = Array.isArray(history) ? history : [];
-  
+  const [currentStage, setCurrentStage] = useState(-1);
+  const [latestUpdate, setLatestUpdate] = useState(null);
+
   const stages = [
     { name: 'Ingested', color: 'bg-gray-500', textColor: 'text-gray-300', icon: '📥' },
     { name: 'Extracted', color: 'bg-yellow-500', textColor: 'text-yellow-300', icon: '🔍' },
@@ -15,19 +15,30 @@ const ProgressBar = ({ history = [] }) => {
     { name: 'Routed', color: 'bg-green-500', textColor: 'text-green-300', icon: '✅' }
   ];
 
-  const getCurrentStage = () => {
-    if (!safeHistory || safeHistory.length === 0) return -1;
-    const latestStatus = safeHistory[safeHistory.length - 1]?.status;
-    if (!latestStatus) return -1;
-    
-    if (latestStatus.includes('Failed') || latestStatus.includes('Error')) {
-      return stages.findIndex(stage => latestStatus.includes(stage.name)) ?? -1;
+  useEffect(() => {
+    const safeHistory = Array.isArray(history) ? history : [];
+    if (safeHistory.length === 0) {
+      setCurrentStage(-1);
+      setLatestUpdate(null);
+      return;
     }
-    
-    return stages.findIndex(stage => stage.name === latestStatus);
-  };
+
+    const latestEvent = safeHistory[safeHistory.length - 1];
+    setLatestUpdate(latestEvent);
+
+    const getCurrentStage = () => {
+      if (!latestEvent?.status) return -1;
+      if (latestEvent.status.includes('Failed') || latestEvent.status.includes('Error')) {
+        return stages.findIndex(stage => latestEvent.status.includes(stage.name)) ?? -1;
+      }
+      return stages.findIndex(stage => stage.name === latestEvent.status);
+    };
+
+    setCurrentStage(getCurrentStage());
+  }, [history]);
 
   const getStageDetails = (stageName) => {
+    const safeHistory = Array.isArray(history) ? history : [];
     const stageEvents = safeHistory.filter(event => event && event.status === stageName);
     if (stageEvents.length === 0) return null;
     
@@ -54,8 +65,6 @@ const ProgressBar = ({ history = [] }) => {
     return details.join('; ');
   };
 
-  const currentStage = getCurrentStage();
-  const latestUpdate = safeHistory.length > 0 ? safeHistory[safeHistory.length - 1] : null;
   const hasError = latestUpdate?.status?.includes('Failed') || latestUpdate?.status?.includes('Error');
   const isProcessing = currentStage >= 0 && currentStage < (stages.length - 1);
 
@@ -63,7 +72,6 @@ const ProgressBar = ({ history = [] }) => {
     <div className="w-full">
       <h4 className="text-lg font-semibold text-slate-300 mb-4">Processing Pipeline</h4>
       
-      {/* --- MODIFIED SECTION START --- */}
       <div className="grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto] items-center gap-x-2">
         {stages.map((stage, index) => {
           const stageDetails = getStageDetails(stage.name);
@@ -119,7 +127,6 @@ const ProgressBar = ({ history = [] }) => {
           );
         })}
       </div>
-      {/* --- MODIFIED SECTION END --- */}
     </div>
   );
 };

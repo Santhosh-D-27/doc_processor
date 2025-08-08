@@ -134,4 +134,4 @@ const DocumentDetails = ({ doc, expandedRow, handleManualAction, setExpandedRow 
   );
 };
 
-export default React.memo(DocumentDetails);
+export default DocumentDetails;
