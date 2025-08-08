@@ -266,6 +266,11 @@ body {
   @apply text-yellow-400;
 }
 
+/* Text Shadow for Login Page */
+.text-shadow-md {
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
 /* Mobile Optimizations */
 @media (max-width: 1024px) {
   .glass-card, .glass-card-strong {
@@ -281,6 +286,28 @@ body {
   .action-button {
     padding: 0.5rem 1rem;
     font-size: 0.8125rem;
+  }
+}
+
+/* Mobile Optimizations for Login Page */
+@media (max-width: 768px) {
+  .glass-card-strong {
+    flex-direction: column;
+    min-height: auto;
+  }
+  
+  .glass-card-strong > div:first-child {
+    min-height: 200px;
+    flex: none;
+  }
+  
+  .glass-card-strong > div:last-child {
+    padding: 2.5rem 1.5rem;
+  }
+  
+  .login-form h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
   }
 }
 

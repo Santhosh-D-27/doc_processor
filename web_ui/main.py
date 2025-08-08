@@ -1145,7 +1145,14 @@ async def migrate_database():
         return {"status": "success", "message": "Database migrations completed successfully"}
     except Exception as e:
         return {"status": "error", "message": f"Migration failed: {str(e)}"}
-
+@app.post("/auth/login")
+async def login(credentials: dict):
+    username = credentials.get("username")
+    password = credentials.get("password")
+    # Validate credentials (e.g., check against a database)
+    if username == "admin" and password == "password123":
+        return {"status": "success", "token": "sample-token"}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="[::]", port=8000)
